@@ -174,7 +174,7 @@ Il fallait aussi gérer un cas pénible : si l'onglet YouTube était ouvert avan
 
 ### 6.2 Interface
 
-J'ai voulu une interface sobre, dans le même esprit que ce rapport. Le popup affiche une barre de répartition empilée, les pourcentages et effectifs de chaque classe, un score global, la confiance moyenne et le temps de réponse. En dessous, la liste des commentaires indique pour chacun sa classe et sa confiance, et peut être filtrée par classe ou par mot-clé. On peut passer en mode sombre (le choix est mémorisé), copier un résumé ou exporter les résultats en CSV.
+Pour l'interface, j'ai cherché quelque chose de lisible en un coup d'œil. En haut des résultats, un emoji et une phrase résument l'humeur générale (« Accueil plutôt positif », « Le public n'aime pas »…) à partir du score global. En dessous viennent une barre de répartition, trois tuiles avec le pourcentage et l'effectif de chaque classe, puis le nombre de commentaires, la confiance moyenne et le temps de réponse. La liste des commentaires indique pour chacun sa classe et sa confiance ; on peut la filtrer par sentiment ou par mot-clé. Un bouton bascule entre thème clair et sombre (le choix est mémorisé), et deux autres copient le résumé ou exportent les résultats en CSV.
 
 Tableau : Captures de l'extension
 
@@ -182,7 +182,7 @@ Tableau : Captures de l'extension
 |---|---|
 | ![](screenshots/04_popup_results_light.png) | ![](screenshots/06_popup_dark_positive.png) |
 
-Je n'utilise aucune bibliothèque externe, et le graphique est dessiné en HTML et CSS. C'était presque une obligation : le Manifest V3 interdit de charger du code distant, et embarquer une bibliothèque de graphiques entière pour une seule barre aurait été disproportionné. Les commentaires sont insérés dans la page avec `textContent` et jamais `innerHTML`, pour qu'un commentaire contenant du HTML ne puisse pas s'exécuter dans l'extension.
+Je n'utilise aucune bibliothèque externe : la barre et les tuiles sont faites en HTML et CSS. C'était presque une obligation, car le Manifest V3 interdit de charger du code distant, et embarquer une bibliothèque de graphiques pour une seule barre aurait été disproportionné. Les commentaires sont insérés dans la page avec `textContent` et jamais `innerHTML`, pour qu'un commentaire contenant du HTML ne puisse pas s'exécuter dans l'extension.
 
 ### 6.3 Beaucoup de commentaires
 

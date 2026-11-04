@@ -8,7 +8,16 @@ const BATCH_SIZE = 100;
 // Un Space HF en veille met parfois ~20 s à se réveiller, d'où ce délai large.
 const REQUEST_TIMEOUT_MS = 30000;
 
-const LABELS = { "1": "positif", "0": "neutre", "-1": "négatif" };
+const LABELS = { "1": "😊 positif", "0": "😐 neutre", "-1": "😞 négatif" };
+
+// Humeur globale affichée en haut des résultats, selon le score (de −1 à +1).
+function moodFor(score) {
+  if (score >= 0.4) return ["🤩", "Le public adore"];
+  if (score >= 0.15) return ["😊", "Accueil plutôt positif"];
+  if (score > -0.15) return ["😐", "Accueil mitigé"];
+  if (score > -0.4) return ["😕", "Accueil plutôt négatif"];
+  return ["😡", "Le public n'aime pas"];
+}
 
 const $ = (id) => document.getElementById(id);
 const state = { predictions: [], stats: null, filter: "all", query: "", title: "", url: "", latency: 0, apiMs: 0 };
@@ -26,8 +35,13 @@ async function loadSettings() {
   $("apiUrl").value = s.apiUrl;
   $("maxComments").value = s.maxComments;
   $("includeReplies").checked = s.includeReplies;
-  document.body.classList.toggle("dark", s.theme === "dark");
+  applyTheme(s.theme === "dark");
   return s;
+}
+
+function applyTheme(dark) {
+  document.body.classList.toggle("dark", dark);
+  $("themeBtn").textContent = dark ? "☀️" : "🌙";
 }
 
 function cleanUrl(raw) {
@@ -45,7 +59,8 @@ async function saveSettings() {
 }
 
 async function toggleTheme() {
-  const dark = document.body.classList.toggle("dark");
+  const dark = !document.body.classList.contains("dark");
+  applyTheme(dark);
   await chrome.storage.local.set({ theme: dark ? "dark" : "light" });
 }
 
@@ -181,6 +196,9 @@ function render() {
   const st = state.stats;
   $("videoTitle").textContent = state.title;
   $("score").textContent = signed(st.sentiment_score);
+  const [emoji, label] = moodFor(st.sentiment_score);
+  $("mood").textContent = emoji;
+  $("moodLabel").textContent = label;
   $("total").textContent = st.total;
   $("conf").textContent = `${Math.round(100 * st.average_confidence)} %`;
   $("latency").textContent = state.latency;

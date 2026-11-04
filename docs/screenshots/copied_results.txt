@@ -1,65 +1,65 @@
-Commentomètre : Docker in 10 Minutes — Containers Explained for Beginners
+Commentomètre : Docker in 10 Minutes : Containers Explained for Beginners
 https://www.youtube.com/watch?v=demo
 60 commentaires : 45,0 % positifs, 28,3 % neutres, 26,7 % négatifs
 Score global : +0,18
 
-[positif, 100 %] This is the best Docker tutorial I have ever watched, thank you so much!
-[positif, 96 %] Great explanation, finally understood the difference between images and containers
-[négatif, 96 %] The audio is terrible, I could barely hear anything
-[neutre, 98 %] Watched on March 3rd
-[négatif, 100 %] Honestly this was boring and way too slow
-[positif, 100 %] Amazing work, very clear and helpful 😍
-[neutre, 99 %] What version of Docker are you using in the video?
-[négatif, 100 %] Worst explanation of volumes ever, totally wrong
-[positif, 87 %] Thanks a lot, this helped me pass my cloud exam!
-[neutre, 98 %] Can you make a video about Kubernetes next
-[positif, 100 %] I love how simple you made it, perfect for beginners
-[neutre, 70 %] The background music is so annoying, I stopped watching
-[neutre, 94 %] Timestamp 4:20 for the Dockerfile part
-[positif, 100 %] Really good content, subscribed
-[négatif, 97 %] This tutorial is outdated and useless now
-[neutre, 92 %] Docker compose explained at the end
-[positif, 100 %] Excellent video, clean and well structured
-[négatif, 99 %] Stupid clickbait title, nothing new here
-[neutre, 99 %] Recorded in 4K?
-[positif, 100 %] Very nice, the best channel for devops
-[négatif, 100 %] I hate when people skip the networking part
-[positif, 100 %] Perfect pace, great examples, thank you
-[neutre, 88 %] Linux or Windows for this?
-[positif, 97 %] This saved my project, you are awesome
-[négatif, 100 %] Bad quality and confusing slides
-[neutre, 98 %] Watching from Rabat
-[positif, 100 %] Super clear, best tutorial on youtube
-[négatif, 100 %] Pretty pathetic attempt at explaining layers
-[neutre, 96 %] Part 2 when?
-[positif, 96 %] Wonderful explanation, everything makes sense now
-[négatif, 98 %] Too much talking and the code is wrong at 6:10
-[positif, 98 %] Good job, keep it up
-[neutre, 50 %] Uploaded the same day as the release
-[positif, 94 %] Brilliant, I finally get what a container is
-[positif, 96 %] Disappointing, expected much more depth
-[positif, 98 %] Thank you, very useful for my internship
-[négatif, 97 %] Dark mode editor theme name?
-[négatif, 99 %] Awful microphone, painful to listen
-[positif, 100 %] Great video and great energy
-[neutre, 97 %] Mac M1 here
-[positif, 100 %] The best teacher, so happy I found this channel
-[négatif, 100 %] Wrong information about port mapping, be careful
-[positif, 100 %] Nice and short, exactly what I needed
-[neutre, 97 %] Day 3 of learning devops
-[négatif, 99 %] Horrible editing, too many cuts
-[positif, 100 %] Incredible quality for a free course, thank you
-[neutre, 97 %] Second time watching
-[positif, 100 %] I love this, more videos like this please
-[négatif, 71 %] Boring, I fell asleep
-[positif, 82 %] Very helpful and well explained
-[neutre, 87 %] Which IDE is that?
-[positif, 100 %] Great, great, great! Best explanation
-[négatif, 100 %] Sad that the repo link is broken
-[positif, 100 %] Clear, concise and fun to watch
-[neutre, 98 %] Posted from my phone
-[positif, 96 %] This is gold, thank you so much
-[négatif, 95 %] Bad advice about running as root
-[positif, 94 %] Thanks, helped a lot with my TP cloud
-[neutre, 97 %] English subtitles please
-[positif, 100 %] Excellent, very good examples
+[😊 positif, 100 %] This is the best Docker tutorial I have ever watched, thank you so much!
+[😊 positif, 96 %] Great explanation, finally understood the difference between images and containers
+[😞 négatif, 96 %] The audio is terrible, I could barely hear anything
+[😐 neutre, 98 %] Watched on March 3rd
+[😞 négatif, 100 %] Honestly this was boring and way too slow
+[😊 positif, 100 %] Amazing work, very clear and helpful 😍
+[😐 neutre, 99 %] What version of Docker are you using in the video?
+[😞 négatif, 100 %] Worst explanation of volumes ever, totally wrong
+[😊 positif, 87 %] Thanks a lot, this helped me pass my cloud exam!
+[😐 neutre, 98 %] Can you make a video about Kubernetes next
+[😊 positif, 100 %] I love how simple you made it, perfect for beginners
+[😐 neutre, 70 %] The background music is so annoying, I stopped watching
+[😐 neutre, 94 %] Timestamp 4:20 for the Dockerfile part
+[😊 positif, 100 %] Really good content, subscribed
+[😞 négatif, 97 %] This tutorial is outdated and useless now
+[😐 neutre, 92 %] Docker compose explained at the end
+[😊 positif, 100 %] Excellent video, clean and well structured
+[😞 négatif, 99 %] Stupid clickbait title, nothing new here
+[😐 neutre, 99 %] Recorded in 4K?
+[😊 positif, 100 %] Very nice, the best channel for devops
+[😞 négatif, 100 %] I hate when people skip the networking part
+[😊 positif, 100 %] Perfect pace, great examples, thank you
+[😐 neutre, 88 %] Linux or Windows for this?
+[😊 positif, 97 %] This saved my project, you are awesome
+[😞 négatif, 100 %] Bad quality and confusing slides
+[😐 neutre, 98 %] Watching from Rabat
+[😊 positif, 100 %] Super clear, best tutorial on youtube
+[😞 négatif, 100 %] Pretty pathetic attempt at explaining layers
+[😐 neutre, 96 %] Part 2 when?
+[😊 positif, 96 %] Wonderful explanation, everything makes sense now
+[😞 négatif, 98 %] Too much talking and the code is wrong at 6:10
+[😊 positif, 98 %] Good job, keep it up
+[😐 neutre, 50 %] Uploaded the same day as the release
+[😊 positif, 94 %] Brilliant, I finally get what a container is
+[😊 positif, 96 %] Disappointing, expected much more depth
+[😊 positif, 98 %] Thank you, very useful for my internship
+[😞 négatif, 97 %] Dark mode editor theme name?
+[😞 négatif, 99 %] Awful microphone, painful to listen
+[😊 positif, 100 %] Great video and great energy
+[😐 neutre, 97 %] Mac M1 here
+[😊 positif, 100 %] The best teacher, so happy I found this channel
+[😞 négatif, 100 %] Wrong information about port mapping, be careful
+[😊 positif, 100 %] Nice and short, exactly what I needed
+[😐 neutre, 97 %] Day 3 of learning devops
+[😞 négatif, 99 %] Horrible editing, too many cuts
+[😊 positif, 100 %] Incredible quality for a free course, thank you
+[😐 neutre, 97 %] Second time watching
+[😊 positif, 100 %] I love this, more videos like this please
+[😞 négatif, 71 %] Boring, I fell asleep
+[😊 positif, 82 %] Very helpful and well explained
+[😐 neutre, 87 %] Which IDE is that?
+[😊 positif, 100 %] Great, great, great! Best explanation
+[😞 négatif, 100 %] Sad that the repo link is broken
+[😊 positif, 100 %] Clear, concise and fun to watch
+[😐 neutre, 98 %] Posted from my phone
+[😊 positif, 96 %] This is gold, thank you so much
+[😞 négatif, 95 %] Bad advice about running as root
+[😊 positif, 94 %] Thanks, helped a lot with my TP cloud
+[😐 neutre, 97 %] English subtitles please
+[😊 positif, 100 %] Excellent, very good examples
