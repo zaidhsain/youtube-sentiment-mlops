@@ -161,7 +161,8 @@ Lignes = vraie classe, colonnes = prédiction, diagonale = bonnes réponses.
   mélangent des mots positifs et négatifs ; le modèle sac-de-mots ne sait pas lequel l'emporte.
 - La classe négative a le plus faible rappel (79,7 %) : c'est la classe minoritaire.
 
-**Hyperparamètres les plus influents**
+**Hyperparamètres les plus influents** :
+
 1. `C` (inverse de la régularisation) : le plus déterminant. Trop faible, le modèle ignore les mots
    rares mais porteurs de sentiment ; la meilleure valeur est en bord de grille (20), on pourrait donc
    explorer au-delà.
@@ -311,7 +312,7 @@ par défilement) et contient des réponses.
 |---|---|
 | Chargement de l'extension, test de l'API (⚙) | OK, « modèle v1.0.0 » |
 | Défilement automatique jusqu'au plafond | 60/60 commentaires chargés en 3 vagues |
-| Analyse complète (extraction + API) | 6,5 s, dont 81 ms d'appel API |
+| Analyse complète (extraction + API) | ≈ 6,5 s, surtout le défilement ; appels API de 80 à 215 ms selon l'exécution |
 | Option « inclure les réponses » | 63 éléments (60 + 3 réponses), marqués « réponse » |
 | Filtres, recherche, mode sombre | OK (captures ci-dessus) |
 | Copier / export CSV | Texte récapitulatif copié ; CSV de 60 lignes |

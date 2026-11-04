@@ -80,8 +80,9 @@ def main():
     md = re.sub(r"\{width=(\d+%)\}", r'{: style="width:\1" }', md)
     body = markdown.markdown(md, extensions=["tables", "attr_list", "fenced_code", "sane_lists"])
     titles = re.findall(r"<h2>(.*?)</h2>", body)
+    num_re = re.compile(r"^\d+\.\s*")
     toc = "<section class='toc'><h2>Sommaire</h2><ol>" + "".join(
-        f"<li>{re.sub(r'^\\d+\\.\\s*', '', t)}</li>" for t in titles) + "</ol></section>"
+        "<li>" + num_re.sub("", t) + "</li>" for t in titles) + "</ol></section>"
     html = (f"<!doctype html><html lang='fr'><head><meta charset='utf-8'><style>{CSS}</style></head>"
             f"<body>{COVER.format(github=GITHUB, api=API)}{toc}{body}</body></html>")
     tmp = DOCS / "_rapport.html"
