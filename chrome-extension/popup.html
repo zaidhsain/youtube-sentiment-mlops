@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>YouTube Sentiment Analyzer</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="icons/icon48.png" alt="" width="24" height="24">
+      <h1>Sentiment Analyzer</h1>
+    </div>
+    <div class="header-actions">
+      <button id="settingsBtn" class="icon-btn" title="Paramètres" aria-label="Paramètres">⚙</button>
+      <button id="themeBtn" class="icon-btn" title="Mode sombre / clair" aria-label="Basculer le thème">◐</button>
+    </div>
+  </header>
+
+  <section id="settings" class="card hidden">
+    <label>URL de l'API
+      <input id="apiUrl" type="url" placeholder="https://<user>-<space>.hf.space">
+    </label>
+    <div class="row">
+      <label>Max commentaires
+        <select id="maxComments">
+          <option>50</option><option selected>100</option><option>200</option><option>500</option>
+        </select>
+      </label>
+      <label class="check"><input id="includeReplies" type="checkbox"> Inclure les réponses</label>
+    </div>
+    <div class="row">
+      <button id="saveSettings" class="secondary">Enregistrer</button>
+      <button id="testApi" class="secondary">Tester l'API</button>
+      <span id="apiStatus" class="muted"></span>
+    </div>
+  </section>
+
+  <button id="analyzeBtn" class="primary">Analyser les commentaires</button>
+
+  <div id="loading" class="hidden">
+    <div class="spinner"></div><span id="loadingText">Extraction des commentaires…</span>
+  </div>
+  <div id="error" class="error hidden"></div>
+
+  <section id="results" class="hidden">
+    <p id="videoTitle" class="video-title"></p>
+
+    <div class="card summary">
+      <svg id="donut" viewBox="0 0 42 42" width="110" height="110" role="img" aria-label="Répartition des sentiments"></svg>
+      <div class="kpis">
+        <div class="kpi pos"><span class="dot"></span>Positif <b id="posPct">0%</b><small id="posN"></small></div>
+        <div class="kpi neu"><span class="dot"></span>Neutre <b id="neuPct">0%</b><small id="neuN"></small></div>
+        <div class="kpi neg"><span class="dot"></span>Négatif <b id="negPct">0%</b><small id="negN"></small></div>
+      </div>
+    </div>
+
+    <div class="meta">
+      <span><b id="total">0</b> commentaires</span>
+      <span>Score <b id="score">0</b></span>
+      <span>Confiance <b id="conf">0%</b></span>
+      <span><b id="latency">0</b> ms</span>
+    </div>
+
+    <div class="toolbar">
+      <div class="filters" role="tablist">
+        <button class="filter active" data-filter="all">Tous</button>
+        <button class="filter" data-filter="1">Positifs</button>
+        <button class="filter" data-filter="0">Neutres</button>
+        <button class="filter" data-filter="-1">Négatifs</button>
+      </div>
+      <div class="exports">
+        <button id="copyBtn" class="secondary small" title="Copier les résultats">Copier</button>
+        <button id="csvBtn" class="secondary small" title="Exporter en CSV">CSV</button>
+      </div>
+    </div>
+    <input id="search" type="search" placeholder="Rechercher dans les commentaires…">
+
+    <ul id="commentList"></ul>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>

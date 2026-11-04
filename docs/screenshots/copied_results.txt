@@ -1,0 +1,65 @@
+Analyse de sentiment — Docker in 10 Minutes — Containers Explained for Beginners
+https://www.youtube.com/watch?v=demo
+Total : 60 | Positif 45.0% | Neutre 28.3% | Négatif 26.7%
+Score global : 0.18
+
+[Positif 100%] This is the best Docker tutorial I have ever watched, thank you so much!
+[Positif 96%] Great explanation, finally understood the difference between images and containers
+[Négatif 96%] The audio is terrible, I could barely hear anything
+[Neutre 98%] Watched on March 3rd
+[Négatif 100%] Honestly this was boring and way too slow
+[Positif 100%] Amazing work, very clear and helpful 😍
+[Neutre 99%] What version of Docker are you using in the video?
+[Négatif 100%] Worst explanation of volumes ever, totally wrong
+[Positif 87%] Thanks a lot, this helped me pass my cloud exam!
+[Neutre 98%] Can you make a video about Kubernetes next
+[Positif 100%] I love how simple you made it, perfect for beginners
+[Neutre 70%] The background music is so annoying, I stopped watching
+[Neutre 94%] Timestamp 4:20 for the Dockerfile part
+[Positif 100%] Really good content, subscribed
+[Négatif 97%] This tutorial is outdated and useless now
+[Neutre 92%] Docker compose explained at the end
+[Positif 100%] Excellent video, clean and well structured
+[Négatif 99%] Stupid clickbait title, nothing new here
+[Neutre 99%] Recorded in 4K?
+[Positif 100%] Very nice, the best channel for devops
+[Négatif 100%] I hate when people skip the networking part
+[Positif 100%] Perfect pace, great examples, thank you
+[Neutre 88%] Linux or Windows for this?
+[Positif 97%] This saved my project, you are awesome
+[Négatif 100%] Bad quality and confusing slides
+[Neutre 98%] Watching from Rabat
+[Positif 100%] Super clear, best tutorial on youtube
+[Négatif 100%] Pretty pathetic attempt at explaining layers
+[Neutre 96%] Part 2 when?
+[Positif 96%] Wonderful explanation, everything makes sense now
+[Négatif 98%] Too much talking and the code is wrong at 6:10
+[Positif 98%] Good job, keep it up
+[Neutre 50%] Uploaded the same day as the release
+[Positif 94%] Brilliant, I finally get what a container is
+[Positif 96%] Disappointing, expected much more depth
+[Positif 98%] Thank you, very useful for my internship
+[Négatif 97%] Dark mode editor theme name?
+[Négatif 99%] Awful microphone, painful to listen
+[Positif 100%] Great video and great energy
+[Neutre 97%] Mac M1 here
+[Positif 100%] The best teacher, so happy I found this channel
+[Négatif 100%] Wrong information about port mapping, be careful
+[Positif 100%] Nice and short, exactly what I needed
+[Neutre 97%] Day 3 of learning devops
+[Négatif 99%] Horrible editing, too many cuts
+[Positif 100%] Incredible quality for a free course, thank you
+[Neutre 97%] Second time watching
+[Positif 100%] I love this, more videos like this please
+[Négatif 71%] Boring, I fell asleep
+[Positif 82%] Very helpful and well explained
+[Neutre 87%] Which IDE is that?
+[Positif 100%] Great, great, great! Best explanation
+[Négatif 100%] Sad that the repo link is broken
+[Positif 100%] Clear, concise and fun to watch
+[Neutre 98%] Posted from my phone
+[Positif 96%] This is gold, thank you so much
+[Négatif 95%] Bad advice about running as root
+[Positif 94%] Thanks, helped a lot with my TP cloud
+[Neutre 97%] English subtitles please
+[Positif 100%] Excellent, very good examples

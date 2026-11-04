@@ -1,0 +1,12 @@
+.venv
+.git
+data
+logs
+reports
+notebooks
+tests
+chrome-extension
+docs
+**/__pycache__
+*.md
+!README.md
