@@ -1,4 +1,4 @@
-"""Phase 3 — Entraînement, comparaison, optimisation et sauvegarde du modèle.
+"""Phase 3 : Entraînement, comparaison, optimisation et sauvegarde du modèle.
 
 Usage : python -m src.models.train
 Produit :
@@ -88,22 +88,30 @@ def grid_search(Xtr, ytr) -> GridSearchCV:
 
 
 def save_confusion(yte, pred) -> None:
-    import matplotlib
-    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    import seaborn as sns
 
+    from src.utils.plot_style import CMAP, apply
+    apply()
     cm = confusion_matrix(yte, pred, labels=[-1, 0, 1])
-    cm_norm = cm / cm.sum(axis=1, keepdims=True)
-    fig, ax = plt.subplots(figsize=(5.5, 4.5))
-    sns.heatmap(cm_norm, annot=cm, fmt="d", cmap="Blues", cbar=False,
-                xticklabels=LABEL_NAMES, yticklabels=LABEL_NAMES, ax=ax)
-    ax.set_xlabel("Prédit")
-    ax.set_ylabel("Réel")
-    ax.set_title("Matrice de confusion (test set)")
-    fig.tight_layout()
+    rates = cm / cm.sum(axis=1, keepdims=True)
+    fig, ax = plt.subplots(figsize=(4.6, 3.9))
+    ax.imshow(rates, cmap=CMAP, vmin=0, vmax=1)
+    for i in range(3):
+        for j in range(3):
+            light = rates[i, j] > 0.55
+            ax.text(j, i - 0.08, f"{cm[i, j]:,}".replace(",", " "), ha="center", va="center",
+                    fontsize=12, color="white" if light else "#1f1b16")
+            ax.text(j, i + 0.2, f"{rates[i, j]:.1%}", ha="center", va="center",
+                    fontsize=8.5, color="white" if light else "#6b645a")
+    ax.set_xticks(range(3), LABEL_NAMES)
+    ax.set_yticks(range(3), LABEL_NAMES)
+    ax.set_xlabel("Classe prédite")
+    ax.set_ylabel("Classe réelle")
+    for side in ("top", "right", "left", "bottom"):
+        ax.spines[side].set_visible(False)
+    ax.tick_params(length=0)
     (REPORT_DIR / "figures").mkdir(parents=True, exist_ok=True)
-    fig.savefig(REPORT_DIR / "figures" / "confusion_matrix.png", dpi=120)
+    fig.savefig(REPORT_DIR / "figures" / "confusion_matrix.png")
     plt.close(fig)
 
 

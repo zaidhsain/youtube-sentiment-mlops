@@ -1,4 +1,4 @@
-"""Phase 4 — API REST FastAPI.
+"""Phase 4 : API REST FastAPI.
 
 Lancement local : uvicorn src.api.main:app --reload --port 8000
 Documentation interactive : http://localhost:8000/docs
@@ -32,9 +32,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="YouTube Sentiment API",
+    title="Commentomètre API",
     description="Analyse de sentiment (négatif / neutre / positif) de commentaires YouTube "
-                "— TF-IDF + Logistic Regression.",
+                "(TF-IDF + régression logistique).",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -74,7 +74,7 @@ def get_predictor() -> SentimentPredictor:
 
 @app.get("/", include_in_schema=False)
 def root():
-    return {"message": "YouTube Sentiment API", "docs": "/docs", "health": "/health"}
+    return {"message": "Commentomètre API", "docs": "/docs", "health": "/health"}
 
 
 @app.get("/health", response_model=HealthResponse, tags=["monitoring"])

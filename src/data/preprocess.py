@@ -1,4 +1,4 @@
-"""Phase 2.2 — Nettoyage, EDA, split train/test reproductible.
+"""Phase 2.2 : Nettoyage, EDA, split train/test reproductible.
 
 Usage : python -m src.data.preprocess
 """
@@ -28,37 +28,45 @@ def load_and_clean(path: Path = RAW_PATH) -> pd.DataFrame:
 
 
 def eda(df: pd.DataFrame) -> None:
-    import matplotlib
-    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    from src.utils.plot_style import COLORS, NAMES, apply
+    apply()
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    names = {-1: "Négatif", 0: "Neutre", 1: "Positif"}
-    colors = {-1: "#e5484d", 0: "#8b8d98", 1: "#30a46c"}
     df = df.assign(n_words=df["text"].str.split().str.len())
 
     counts = df["label"].value_counts().sort_index()
-    print("\nDistribution des classes :\n", counts.rename(index=names).to_string())
+    print("\nDistribution des classes :\n", counts.rename(index=NAMES).to_string())
     print("\nLongueur (mots) par classe :\n",
-          df.groupby("label")["n_words"].describe()[["mean", "50%", "max"]].rename(index=names).round(1))
+          df.groupby("label")["n_words"].describe()[["mean", "50%", "max"]].rename(index=NAMES).round(1))
 
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar([names[i] for i in counts.index], counts.values, color=[colors[i] for i in counts.index])
-    ax.set_title("Distribution des classes")
-    ax.set_ylabel("Nombre de commentaires")
-    fig.tight_layout()
-    fig.savefig(FIG_DIR / "class_distribution.png", dpi=120)
+    # Répartition : barres horizontales annotées (effectif et part)
+    fig, ax = plt.subplots(figsize=(6.2, 2.4))
+    order = [1, 0, -1]
+    ax.barh([NAMES[i] for i in order], [counts[i] for i in order],
+            color=[COLORS[i] for i in order], height=0.55)
+    for y, lab in enumerate(order):
+        n = counts[lab]
+        ax.text(n + 200, y, f"{n:,} ({n / len(df):.1%})".replace(",", " "), va="center", fontsize=9.5)
+    ax.invert_yaxis()
+    ax.set_xlim(0, counts.max() * 1.28)
+    ax.set_xlabel("Nombre de commentaires")
+    ax.spines["left"].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    fig.savefig(FIG_DIR / "class_distribution.png")
     plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(7, 4))
-    for lab in (-1, 0, 1):
-        ax.hist(df.loc[df.label == lab, "n_words"].clip(upper=150), bins=50,
-                alpha=0.55, label=names[lab], color=colors[lab])
-    ax.set_title("Longueur des commentaires (mots, tronquée à 150)")
-    ax.set_xlabel("Nombre de mots")
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(FIG_DIR / "text_length.png", dpi=120)
+    # Longueur : histogrammes en contour, médiane en pointillés
+    fig, ax = plt.subplots(figsize=(6.2, 3.0))
+    for lab in (1, 0, -1):
+        words = df.loc[df.label == lab, "n_words"].clip(upper=150)
+        ax.hist(words, bins=60, histtype="step", linewidth=1.4, density=True,
+                color=COLORS[lab], label=f"{NAMES[lab]} (médiane {int(words.median())} mots)")
+        ax.axvline(words.median(), color=COLORS[lab], linestyle=":", linewidth=1)
+    ax.set_xlabel("Nombre de mots (tronqué à 150)")
+    ax.set_ylabel("Densité")
+    ax.legend(fontsize=9)
+    fig.savefig(FIG_DIR / "text_length.png")
     plt.close(fig)
 
 

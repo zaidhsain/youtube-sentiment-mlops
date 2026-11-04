@@ -1,5 +1,5 @@
 model,accuracy,f1_macro,f1_min_class,fit_seconds
-LinearSVC,0.8785,0.8661,0.7934,1.4461
-LogisticRegression,0.8767,0.866,0.7976,3.3197
-RandomForest,0.7733,0.7125,0.4763,13.5655
-ComplementNB,0.6848,0.6578,0.5563,1.2873
+LinearSVC,0.8785,0.8661,0.7934,1.424
+LogisticRegression,0.8767,0.866,0.7976,3.2985
+RandomForest,0.7733,0.7125,0.4763,13.6826
+ComplementNB,0.6848,0.6578,0.5563,1.2343

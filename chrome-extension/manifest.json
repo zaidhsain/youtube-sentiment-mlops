@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "YouTube Sentiment Analyzer",
+  "name": "Commentomètre",
   "version": "1.0.0",
-  "description": "Analyse le sentiment des commentaires YouTube grâce à une API de Machine Learning.",
+  "description": "Lit les commentaires d’une vidéo YouTube et en fait le bilan : positifs, neutres, négatifs.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
     "https://www.youtube.com/*",
@@ -12,7 +12,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Analyser les commentaires",
+    "default_title": "Commentomètre",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

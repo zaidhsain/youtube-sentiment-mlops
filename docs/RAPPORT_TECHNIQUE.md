@@ -1,349 +1,251 @@
-# Rapport technique — Analyse de sentiment des commentaires YouTube
+# Analyse de sentiment des commentaires YouTube
 
-**TP3 Cloud Computing — Filière INDIA, ENSAM Rabat — Prof. Maria Zemzami — 2026/27**
-
-**Réalisé par :** _Nom Prénom_ — **Dépôt GitHub :** {{GITHUB_URL}} — **API :** {{API_URL}}
+Zaid Hsain · Dépôt : {{GITHUB_URL}} · API : {{API_URL}}
 
 ---
 
-## 1. Problème et solution proposée
+## Introduction
 
-Un créateur YouTube reçoit des centaines de commentaires. Les lire tous pour mesurer la réception
-d'une vidéo est lent, subjectif et non quantifiable.
+Quand une vidéo dépasse quelques centaines de commentaires, plus personne ne les lit tous, pas même son auteur. On se contente des premiers, ceux que YouTube met en avant, et on se fait une idée de l'accueil du public à partir d'un échantillon minuscule et pas du tout représentatif. L'objet de ce TP était de construire un outil qui fasse ce travail à notre place : lire les commentaires d'une vidéo et dire, chiffres à l'appui, s'ils sont plutôt positifs, neutres ou négatifs.
 
-**Solution** : un système MLOps de bout en bout.
+Au-delà du modèle lui-même, l'intérêt du sujet est de parcourir toute la chaîne d'un projet de machine learning : préparer des données, entraîner et évaluer un modèle, l'exposer derrière une API, l'emballer dans un conteneur, le mettre en ligne, et enfin le rendre utilisable par quelqu'un qui n'a jamais ouvert un notebook. Ce rapport suit cet ordre. J'y explique ce que j'ai fait, pourquoi je l'ai fait ainsi, et ce qui n'a pas marché du premier coup.
 
-1. Un **modèle** de classification (TF-IDF + régression logistique) entraîné sur 36 000 commentaires labelisés.
-2. Une **API REST** FastAPI qui sert le modèle, conteneurisée avec Docker et hébergée sur Hugging Face Spaces.
-3. Une **extension Chrome** qui extrait les commentaires de la vidéo ouverte, interroge l'API et affiche
-   une synthèse visuelle.
-4. Une **suite de tests** (38 tests unitaires et d'API + un test d'intégration contre l'API déployée).
+## 1. Architecture générale
 
-## 2. Architecture
+Le système se compose de trois blocs qui ne se connaissent que par des interfaces simples.
 
-Voir le schéma du `README.md`. Flux d'une analyse :
+Le premier est une **extension Chrome**. Quand l'utilisateur est sur une vidéo et clique sur l'icône, un script injecté dans la page récupère le texte des commentaires, le popup l'envoie au serveur, puis affiche le résultat : répartition, score global, liste filtrable.
 
-| Étape | Où | Quoi |
+Le deuxième est une **API REST** écrite avec FastAPI. Elle reçoit une liste de commentaires en JSON et renvoie, pour chacun, une classe et une probabilité, ainsi que des statistiques sur l'ensemble.
+
+Le troisième est le **modèle** : un vectoriseur TF-IDF suivi d'une régression logistique, tous deux sérialisés avec joblib et chargés par l'API au démarrage. L'API tourne dans un conteneur Docker hébergé sur Hugging Face Spaces.
+
+Tableau : Déroulement d'une analyse, du clic à l'affichage
+
+| Étape | Composant | Action |
 |---|---|---|
-| 1 | Navigateur | L'utilisateur ouvre une vidéo et clique sur l'extension |
-| 2 | `content.js` | Fait défiler la page pour charger les commentaires (lazy loading), lit le DOM |
-| 3 | `popup.js` | Découpe en lots de 100 et envoie `POST /predict_batch` |
-| 4 | API | Pydantic valide → `clean_text` → TF-IDF → `predict_proba` |
-| 5 | API | Renvoie sentiment, confiance, probabilités et statistiques agrégées |
-| 6 | `popup.js` | Affiche le donut, les KPI, la liste filtrable ; copie / export CSV |
+| 1 | Popup | L'utilisateur clique sur « Analyser » |
+| 2 | Script de contenu | Défilement de la page, lecture des commentaires dans le DOM |
+| 3 | Popup | Envoi par lots de 100 vers `POST /predict_batch` |
+| 4 | API | Validation, nettoyage du texte, TF-IDF, `predict_proba` |
+| 5 | API | Réponse : classe, confiance, probabilités, statistiques |
+| 6 | Popup | Barre de répartition, chiffres clés, liste filtrable |
 
-**Séparation des responsabilités** dans le code :
+J'ai tenu à ce que la logique de prédiction (`src/api/predictor.py`) soit indépendante de FastAPI : elle se teste sans serveur, et si je devais changer de framework je n'aurais qu'un fichier à réécrire. Le seul code partagé entre l'entraînement et l'API est la fonction de nettoyage du texte, dans `src/utils/text.py`. J'y reviens en section 9, parce que c'est précisément ce partage qui m'a posé problème.
 
-- `src/utils/text.py` : nettoyage de texte, **seul module partagé** entre entraînement et API.
-- `src/api/predictor.py` : logique ML pure (chargement, prédiction, statistiques), testable sans HTTP.
-- `src/api/main.py` : couche HTTP (routes, CORS, erreurs, logs).
-- `app_api.py` : point d'entrée de production (port 7860 via `PORT`).
+## 2. Mise en place de l'environnement
 
-## 3. Phase 1 — Environnement MLOps
+### 2.1 Organisation du dépôt
 
-Structure `data/ models/ src/ chrome-extension/ logs/ reports/ tests/`, dépôt Git, environnement virtuel
-Python 3.10, `requirements.txt` (dev) et `requirements-prod.txt` (prod), `.gitignore`.
+J'ai suivi la structure proposée dans l'énoncé : `data/raw` et `data/processed` pour les données, `models/` pour les artefacts, `src/` découpé en `data`, `models`, `api` et `utils`, puis `chrome-extension/`, `tests/` et `logs/`. Chaque étape du pipeline est un module exécutable (`python -m src.data.preprocess`, `python -m src.models.train`), ce qui permet de tout reproduire à partir d'un clone du dépôt, dans l'ordre, sans rien faire à la main.
 
-**Pourquoi séparer `raw` et `processed` ?**
-`raw` est la source de vérité immuable ; `processed` est un artefact régénérable par script. On peut
-modifier le nettoyage et tout recalculer sans jamais retélécharger ni écraser l'original : c'est la
-condition de la reproductibilité et de la traçabilité.
+La séparation entre `raw` et `processed` n'est pas qu'une question de rangement. Le fichier brut est ma source de vérité et je ne le modifie jamais ; tout ce qui est dans `processed` peut être supprimé et régénéré par script. Si je change une règle de nettoyage, je relance la préparation, et je sais exactement d'où viennent les données sur lesquelles le modèle a été entraîné.
 
-**Quels fichiers ne jamais committer ?**
-Secrets (`.env`, tokens HF/GitHub), environnement virtuel (`.venv/`, des centaines de Mo et propre à
-une machine), données volumineuses ou régénérables (`data/`), caches (`__pycache__`), logs, fichiers
-d'IDE/OS. Les modèles `.joblib` (≈ 750 Ko ici) sont versionnés car le Space en a besoin ; au-delà de
-quelques dizaines de Mo, on utiliserait Git LFS, DVC ou le Hub de modèles HF.
+### 2.2 Environnement virtuel et dépendances
 
-**Importance de l'environnement virtuel ?**
-Isoler les dépendances du projet (pas de conflit avec d'autres projets ou le Python système) et figer
-les versions. C'est critique ici : un modèle sérialisé avec joblib doit être rechargé avec la même
-version de scikit-learn (voir § 9).
+Ma machine avait Python 3.15 par défaut, trop récent pour la version de scikit-learn que je voulais utiliser. J'ai donc créé l'environnement virtuel avec `uv` en Python 3.10, la même version que l'image Docker de production. Ce point paraît anodin, mais il ne l'est pas : un modèle sauvegardé avec joblib n'est garanti relisible qu'avec les mêmes versions de scikit-learn et de numpy. Un environnement virtuel sert justement à figer ces versions par projet, sans dépendre de ce qui est installé sur la machine.
 
-## 4. Phase 2 — Données
+J'ai séparé deux fichiers de dépendances. `requirements.txt` contient tout ce qu'il faut pour travailler (pandas, matplotlib, seaborn, pytest…) ; `requirements-prod.txt` ne contient que ce qu'il faut pour servir le modèle, avec des versions exactes.
 
-**Source** : `reddit.csv` (Himanshu-1703), 37 249 lignes, colonnes `clean_comment`, `category`.
+### 2.3 Ce qui ne va pas dans Git
 
-| Étape | Lignes |
-|---|---|
-| Brut | 37 249 |
-| Après suppression des NaN (100), textes vides et doublons | **36 449** |
-| Train (80 %) / Test (20 %) | 29 159 / 7 290 |
+Le `.gitignore` exclut l'environnement virtuel (plusieurs centaines de mégaoctets, propre à ma machine), les données (régénérables et trop lourdes), les journaux, les caches Python et tout ce qui pourrait contenir un secret, comme un fichier `.env` ou un token Hugging Face. Un token commité par erreur reste dans l'historique même après suppression, il faut alors le révoquer. Les fichiers du modèle, eux, sont versionnés : ils pèsent environ 750 Ko au total et le Space en a besoin pour démarrer. Pour des modèles de plusieurs centaines de mégaoctets, j'aurais utilisé Git LFS ou le Hub de modèles de Hugging Face.
 
-Distribution : positif 43 % (15 720), neutre 34 % (12 496), négatif 23 % (8 233). Les exigences du TP
-(≥ 1 000 commentaires, ≥ 300 par classe, colonnes `text`/`label`) sont largement satisfaites.
+## 3. Les données
 
-![Distribution des classes](../reports/figures/class_distribution.png){width=48%} ![Longueur des commentaires](../reports/figures/text_length.png){width=50%}
+### 3.1 Source
 
-**EDA** (`reports/figures/`) : les commentaires neutres sont beaucoup plus courts (médiane 7 mots)
-que les positifs (21) et négatifs (20). Un texte court contient peu de mots porteurs d'opinion, d'où
-une prédiction « neutre ».
+Le jeu de données imposé contient 37 249 commentaires Reddit étiquetés −1 (négatif), 0 (neutre) ou 1 (positif). Le script `download_data.py` le télécharge, l'enregistre dans `data/raw/reddit.csv` et affiche quelques statistiques. Cent lignes ont un texte manquant. La répartition est déséquilibrée : 42,5 % de positifs, 35,3 % de neutres, 22,2 % de négatifs.
 
-**Nettoyage** (`clean_text`) : minuscules, suppression HTML, URLs, mentions `@`, `#hashtag` → `hashtag`,
-emojis convertis en mots, apostrophes retirées (`don't` → `dont`), suppression chiffres/ponctuation,
-lettres répétées réduites (`soooo` → `soo`), espaces normalisés.
+### 3.2 Nettoyage
 
-**Déséquilibre** : modéré (ratio 1,9 entre la plus grande et la plus petite classe). Traité par
-`class_weight="balanced"` (la perte pondère davantage les erreurs sur la classe négative) plutôt que
-par sur-échantillonnage, qui dupliquerait des textes et gonflerait artificiellement le train.
+Le texte est déjà en minuscules et en partie débarrassé de ses mots vides, mais les commentaires YouTube que l'API recevra en production, eux, seront bruts. J'ai donc écrit une fonction de nettoyage qui doit fonctionner sur les deux : passage en minuscules, suppression des balises HTML, des URL et des mentions `@pseudo`, conservation du mot des hashtags, conversion des emojis en texte, suppression des apostrophes (« don't » devient « dont »), de la ponctuation et des chiffres, réduction des lettres répétées (« soooo » devient « soo »).
 
-**Split** : `train_test_split(test_size=0.2, stratify=label, random_state=42)` → reproductible et
-proportions de classes identiques dans train et test.
+Les URL et les mentions sont supprimées parce qu'elles sont presque toutes uniques. Chacune deviendrait une colonne de la matrice TF-IDF, qui ne s'appliquerait qu'à un ou deux commentaires et n'aurait aucun lien avec le sentiment ; au mieux elle encombre le vocabulaire, au pire le modèle s'en sert pour mémoriser des exemples.
 
-**Pourquoi nettoyer URLs et mentions ?**
-Ce sont des tokens quasi uniques (chaque URL, chaque pseudo est différent) : ils gonflent le vocabulaire,
-ne portent aucun sentiment et favorisent le sur-apprentissage sur des identifiants.
+Les emojis m'ont fait hésiter. Les supprimer est le plus simple, mais sur YouTube ils portent souvent tout le sentiment d'un commentaire. J'ai choisi de les traduire en mots avec la bibliothèque `emoji` : 😍 devient « smiling face with heart eyes », que le vectoriseur peut exploiter. La limite est que le corpus Reddit en contient très peu, donc le modèle n'a pas beaucoup appris de ces mots-là.
 
-**Comment gérer les emojis ?**
-Les supprimer ferait perdre un signal fort sur YouTube (😍, 😡, 😂). On les convertit en texte
-(`emoji.demojize` : 😍 → « smiling face with heart eyes »), ce qui les rend exploitables par TF-IDF.
-Limite : le dataset Reddit contient peu d'emojis, donc le modèle en a peu appris ; un dataset YouTube
-ou un dictionnaire emoji → sentiment ferait mieux.
+Après nettoyage, suppression des textes vides et des doublons, il reste **36 449 commentaires**.
 
-**Quel ratio train/test ?**
-80/20 est le compromis standard pour quelques dizaines de milliers d'exemples : 7 000 exemples de test
-donnent une estimation stable (intervalle de confiance ≈ ±0,7 point sur l'accuracy), et 29 000 restent
-pour l'entraînement. La validation croisée (3-fold) sur le train sert au réglage des hyperparamètres,
-le test n'est utilisé qu'une fois à la fin.
+### 3.3 Exploration
 
-## 5. Phase 3 — Modèle
+![Répartition des classes après nettoyage](../reports/figures/class_distribution.png)
 
-**Démarche** : (1) comparer 4 algorithmes avec le même TF-IDF ; (2) optimiser TF-IDF + régression
-logistique par `GridSearchCV` (24 combinaisons × 3 folds, métrique F1 macro) ; (3) évaluer une seule
-fois sur le test ; (4) sauvegarder vectoriseur et modèle avec `joblib`.
+L'observation la plus intéressante concerne la longueur : un commentaire neutre fait 7 mots en médiane, contre 21 pour un positif et 20 pour un négatif. Ce n'est pas surprenant quand on y pense, car un texte court a peu de chances de contenir un mot qui exprime une opinion, mais cela annonce déjà que le modèle aura du mal avec les commentaires longs et nuancés.
 
-| Modèle | Accuracy | F1 macro | F1 min. | Entraînement |
+![Distribution de la longueur des commentaires par classe (en mots, tronquée à 150)](../reports/figures/text_length.png)
+
+### 3.4 Déséquilibre et découpage
+
+Le rapport entre la classe la plus fréquente et la plus rare est d'environ 1,9. C'est un déséquilibre modéré, et je n'ai pas voulu sur-échantillonner les négatifs, ce qui revient à dupliquer des textes. J'ai préféré passer `class_weight="balanced"` au modèle : chaque erreur sur un commentaire négatif coûte simplement plus cher pendant l'entraînement.
+
+J'ai découpé les données en 80 % pour l'entraînement et 20 % pour le test, de façon stratifiée et avec une graine fixe (`random_state=42`). Avec 36 000 exemples, 20 % représentent 7 290 commentaires de test, assez pour que l'accuracy mesurée soit précise à moins d'un point près. Le jeu de test n'a servi qu'une seule fois, à la toute fin ; tous les réglages ont été faits par validation croisée sur le jeu d'entraînement.
+
+## 4. Le modèle
+
+### 4.1 Pourquoi TF-IDF
+
+Un simple comptage de mots (`CountVectorizer`) donne autant de poids à « the » qu'à « terrible ». TF-IDF corrige cela en divisant l'importance d'un mot par sa fréquence dans l'ensemble du corpus : un mot présent partout ne pèse presque rien, un mot rare et caractéristique pèse beaucoup. J'ai ajouté `sublinear_tf=True`, qui remplace le nombre d'occurrences par son logarithme, pour qu'un commentaire répétant dix fois « great » ne compte pas dix fois plus qu'un commentaire qui le dit une fois. La normalisation L2 met enfin tous les commentaires à la même échelle, quelle que soit leur longueur.
+
+### 4.2 Comparaison de plusieurs algorithmes
+
+Avant d'optimiser quoi que ce soit, j'ai entraîné quatre classifieurs sur la même représentation TF-IDF pour voir lequel méritait qu'on s'y attarde.
+
+Tableau : Comparaison des algorithmes sur le jeu de test (même vectoriseur)
+
+| Modèle | Accuracy | F1 macro | F1 le plus faible | Temps d'entraînement |
 |---|---|---|---|---|
-| LinearSVC | 0,879 | 0,866 | 0,793 | 1,4 s |
-| **Logistic Regression** | 0,877 | 0,866 | 0,798 | 3,3 s |
-| Random Forest | 0,773 | 0,713 | 0,476 | 13,2 s |
-| Complement NB | 0,685 | 0,658 | 0,556 | 1,2 s |
+| SVM linéaire | 0,879 | 0,866 | 0,793 | 1,4 s |
+| Régression logistique | 0,877 | 0,866 | 0,798 | 3,3 s |
+| Forêt aléatoire | 0,773 | 0,713 | 0,476 | 13,2 s |
+| Naive Bayes (complément) | 0,685 | 0,658 | 0,556 | 1,2 s |
 
-La régression logistique fait jeu égal avec le SVM linéaire et a un avantage décisif pour le produit :
-elle fournit des **probabilités calibrées** (`predict_proba`), affichées comme « confiance » dans
-l'extension. Random Forest est mal adapté aux matrices TF-IDF très creuses et de grande dimension.
+La régression logistique et le SVM sont à égalité. J'ai gardé la régression logistique pour une raison pratique : elle donne directement des probabilités, que j'affiche comme indice de confiance dans l'extension, alors que le SVM linéaire ne fournit qu'une distance à la frontière. La forêt aléatoire, de son côté, est mal adaptée à des matrices aussi creuses, où chaque arbre ne voit qu'une poignée de mots utiles.
 
-**Grille et meilleur résultat** : `ngram_range ∈ {(1,1),(1,2),(1,3)}`, `max_features ∈ {30k, 80k}`,
-`C ∈ {1, 5, 10, 20}` → meilleurs : **unigrammes, 30 000 features, C = 20** (F1 CV = 0,870).
+### 4.3 Optimisation des hyperparamètres
 
-**Résultats finaux sur le test set** :
+J'ai ensuite lancé un `GridSearchCV` sur le pipeline complet, avec une validation croisée à trois plis et le F1 macro comme critère, pour ne pas favoriser la classe majoritaire. La grille croisait la taille des n-grammes (1, 1-2, 1-3), le nombre maximal de mots retenus (30 000 ou 80 000) et la régularisation `C` (1, 5, 10, 20), soit 24 combinaisons.
 
-| | Précision | Rappel | F1 |
+La meilleure combinaison utilise **des mots seuls, 30 000 mots et C = 20**, pour un F1 macro de 0,870 en validation croisée. Le paramètre qui pèse le plus est de loin `C` : avec une régularisation forte (C = 1), le modèle néglige les mots rares, qui sont souvent les plus expressifs. Comme la meilleure valeur se trouve au bord de la grille, il y aurait sans doute un peu à gagner en testant au-delà de 20. Le fait que les bigrammes n'apportent rien m'a surpris au départ ; la section 4.5 l'explique.
+
+### 4.4 Résultats
+
+Tableau : Performances du modèle final sur les 7 290 commentaires de test
+
+| Classe | Précision | Rappel | F1 |
 |---|---|---|---|
 | Négatif | 0,831 | 0,797 | 0,814 |
 | Neutre | 0,908 | 0,966 | 0,936 |
 | Positif | 0,916 | 0,889 | 0,902 |
-| **Accuracy** | | | **0,8945** |
+| Accuracy globale | | | 0,8945 |
 
-Latence : **0,7 ms** pour 50 commentaires (critère : < 100 ms). Tous les critères du TP sont atteints.
+Les trois critères de l'énoncé sont respectés : une accuracy de 89,45 % (80 % demandés), un F1 supérieur à 0,75 pour chaque classe (0,81 au plus bas), et 0,7 ms pour prédire un lot de 50 commentaires (100 ms tolérées).
 
-**Pourquoi TF-IDF plutôt que CountVectorizer ?**
-CountVectorizer compte les occurrences brutes : les mots fréquents partout (« the », « video ») dominent.
-TF-IDF pondère chaque mot par sa rareté dans le corpus (IDF) : un mot présent dans tous les documents
-pèse presque zéro, un mot discriminant pèse fort. Avec `sublinear_tf` (1 + log tf) et la normalisation
-L2, un commentaire long ne domine pas un commentaire court. Pour un modèle linéaire, cela donne des
-features mieux échelonnées et une convergence plus stable.
+![Matrice de confusion sur le jeu de test (effectifs ; teinte normalisée par ligne)](../reports/figures/confusion_matrix.png)
 
-**Interprétation de la matrice de confusion**
+Dans la matrice de confusion, les lignes sont les vraies classes et les colonnes les prédictions. La diagonale est très nette pour les neutres : 2 414 sur 2 499 sont bien reconnus. Les erreurs se concentrent ailleurs, entre positifs et négatifs (212 négatifs pris pour des positifs, 226 dans l'autre sens). En relisant quelques-uns de ces cas, j'ai surtout trouvé des commentaires longs qui contiennent à la fois des mots positifs et négatifs, et pour lesquels un modèle qui ne voit qu'un sac de mots ne peut pas savoir lequel l'emporte. Les négatifs ont le rappel le plus faible (79,7 %), ce qui est cohérent avec le fait qu'ils sont les moins nombreux.
 
-![Matrice de confusion](../reports/figures/confusion_matrix.png){width=55%}
+### 4.5 Ce que le modèle a vraiment appris
 
-Lignes = vraie classe, colonnes = prédiction, diagonale = bonnes réponses.
+En regardant les coefficients du modèle, j'ai eu une surprise. Les mots qui poussent le plus vers « négatif » sont *hate, stupid, other, bad, down, evil, pathetic, worst, wrong, mean, game* ; vers « positif », *more, best, good, lol, great, right, own, many, most, better, kind*. « Hate » ou « great », d'accord, mais « other », « down », « more », « own » ou « many » n'expriment aucune opinion.
 
-| Réel \ Prédit | Négatif | Neutre | Positif |
-|---|---|---|---|
-| Négatif | **1 313** | 122 | 212 |
-| Neutre | 41 | **2 414** | 44 |
-| Positif | 226 | 124 | **2 794** |
+Ces mots sont exactement ceux du lexique de polarité de **TextBlob**. J'en conclus que les étiquettes du jeu de données n'ont pas été posées par des humains, mais générées automatiquement par TextBlob. Le modèle n'apprend donc pas à reconnaître un sentiment : il apprend à imiter TextBlob, et il le fait très bien. Cela explique plusieurs choses à la fois : la bonne accuracy (la tâche est presque déterministe), l'inutilité des bigrammes (TextBlob raisonne mot par mot), et des erreurs qui paraissent absurdes, comme « not bad at all » classé négatif.
 
-- La classe neutre est la mieux reconnue (rappel 96,6 %).
-- La confusion principale est **négatif ↔ positif** (212 + 226) : ce sont des commentaires longs qui
-  mélangent des mots positifs et négatifs ; le modèle sac-de-mots ne sait pas lequel l'emporte.
-- La classe négative a le plus faible rappel (79,7 %) : c'est la classe minoritaire.
+Je l'ai vérifié sur mes propres exemples pendant les tests de l'extension. « *Disappointing, expected much more depth* » est classé positif, à cause de « more ». « *Dark mode editor theme name?* », une simple question, est classé négatif, parce que « dark » est négatif pour TextBlob. Il faut donc lire le 89 % pour ce qu'il est : un taux d'accord avec TextBlob, pas avec un lecteur humain.
 
-**Hyperparamètres les plus influents** :
+## 5. L'API
 
-1. `C` (inverse de la régularisation) : le plus déterminant. Trop faible, le modèle ignore les mots
-   rares mais porteurs de sentiment ; la meilleure valeur est en bord de grille (20), on pourrait donc
-   explorer au-delà.
-2. `ngram_range` : contre-intuitivement, les unigrammes battent les bigrammes (voir ci-dessous).
-3. `class_weight="balanced"` : améliore le rappel de la classe négative.
-4. `max_features`, `min_df`, `sublinear_tf` : effet plus faible.
+### 5.1 Choix de FastAPI
 
-**Constat important sur les labels.** Les mots les plus influents du modèle sont :
+J'aurais pu utiliser Flask, mais FastAPI m'a évité beaucoup de code. En déclarant le format des requêtes avec Pydantic, j'obtiens la validation des entrées, des messages d'erreur précis et une documentation interactive (`/docs`) générée automatiquement, que je n'ai pas eu à écrire. FastAPI repose aussi sur un serveur ASGI (Uvicorn), plus performant que le serveur WSGI classique de Flask.
 
-- négatif : *hate, stupid, **other**, bad, **down**, evil, pathetic, worst, wrong, **mean**, **game***
-- positif : ***more**, best, good, lol, great, **right**, **own**, **many**, **most**, better, **kind***
+### 5.2 Points d'entrée
 
-« other », « down », « more », « own », « many » n'expriment pas une opinion : ce sont exactement les mots
-du lexique de polarité **TextBlob**. Les labels du dataset ont donc été produits automatiquement par
-TextBlob et non annotés par des humains. Le modèle réapprend ce lexique, ce qui explique :
-la bonne accuracy (la tâche est quasi déterministe), la victoire des unigrammes (TextBlob travaille
-mot à mot), et des erreurs comme « not bad at all » classé négatif. Le test de bout en bout (§ 9)
-le confirme : « *Disappointing, expected much more depth* » est classé **positif** (« more » est positif
-pour TextBlob) et « *Dark mode editor theme name?* » **négatif** (« dark » est négatif pour TextBlob). Ce point doit être dit honnêtement :
-**89 % d'accord avec TextBlob ne signifie pas 89 % d'accord avec un humain**.
+`GET /health` indique si l'API tourne, si le modèle est chargé, sa version et depuis combien de temps le service est démarré. C'est ce que surveillent le `HEALTHCHECK` de Docker et le bouton « Tester l'API » de l'extension.
 
-## 6. Phase 4 — API REST
+`POST /predict_batch` accepte de 1 à 500 commentaires. Chaque commentaire est tronqué à 5 000 caractères plutôt que rejeté, car un long commentaire reste analysable. La réponse contient, pour chaque commentaire, le texte d'origine, la classe, l'étiquette, la confiance et les trois probabilités, puis des statistiques globales (effectifs, pourcentages, confiance moyenne, score entre −1 et 1) et le temps de calcul.
 
-| Endpoint | Méthode | Rôle |
-|---|---|---|
-| `/health` | GET | État de l'API, modèle chargé, version, uptime |
-| `/predict_batch` | POST | 1 à 500 commentaires → prédictions + statistiques + temps de calcul |
-| `/docs` | GET | Documentation Swagger générée automatiquement |
+Tableau : Codes de réponse de `/predict_batch`
 
-Validation Pydantic (liste non vide, ≤ 500 éléments, chaînes uniquement, troncature à 5 000 caractères),
-erreurs 422 / 503 / 500 explicites, journalisation de chaque requête (méthode, chemin, statut, durée)
-dans la console et `logs/app.log`.
-
-**Pourquoi FastAPI plutôt que Flask ?**
-Validation et sérialisation automatiques par les types (Pydantic) au lieu de code manuel ;
-documentation OpenAPI/Swagger générée gratuitement (livrable « documentation API ») ; serveur ASGI
-plus performant ; erreurs 422 détaillées. Flask resterait possible mais demanderait d'écrire à la main
-ce que FastAPI fournit.
-
-**À quoi sert CORS ?**
-Le navigateur bloque par défaut une page qui appelle un autre domaine que le sien (*Same-Origin
-Policy*). CORS permet au serveur de déclarer quelles origines sont autorisées. Ici on autorise les
-origines `chrome-extension://<id>`, `localhost` et `youtube.com`, et rien d'autre. Un site
-malveillant ne peut donc pas utiliser l'API depuis le navigateur d'un visiteur. CORS ne remplace
-pas une authentification : `curl` l'ignore.
-
-**Comment charger le modèle efficacement ?**
-Une seule fois au démarrage (hook `lifespan` de FastAPI), conservé en mémoire, puis réutilisé par
-toutes les requêtes. Charger à chaque requête coûterait des dizaines de millisecondes et de la mémoire.
-Si le chargement échoue, l'API démarre quand même en mode dégradé : `/health` le signale et
-`/predict_batch` renvoie 503 au lieu de planter.
-
-## 7. Phase 5 — Extension Chrome
-
-Manifest V3, permissions minimales : `activeTab`, `scripting`, `storage`, et accès hôte limité à
-YouTube, `*.hf.space` et localhost. Aucune bibliothèque externe : le donut est dessiné en SVG
-(les extensions MV3 interdisent le chargement de scripts distants).
-
-Fonctionnalités : extraction automatique avec défilement, statistiques globales (%, effectifs, score,
-confiance moyenne, temps de réponse), liste avec sentiment et confiance, filtres, recherche,
-mode sombre/clair mémorisé, copie des résultats, export CSV, gestion du chargement et des erreurs
-(API injoignable, délai dépassé, page non YouTube, aucun commentaire). Sécurité : les commentaires sont
-insérés avec `textContent`, jamais `innerHTML`, pour qu'un commentaire contenant du HTML ou du script
-ne soit pas exécuté (XSS).
-
-| Résultats (mode clair) | Filtre « Positifs » (mode sombre) |
+| Code | Situation |
 |---|---|
-| ![](screenshots/04_popup_results_light.png){width=95%} | ![](screenshots/06_popup_dark_positive.png){width=95%} |
+| 200 | Prédiction effectuée |
+| 422 | Lot vide, plus de 500 éléments, mauvais type, JSON mal formé |
+| 503 | Modèle non chargé |
+| 500 | Erreur inattendue (journalisée côté serveur, message générique côté client) |
 
-| Filtre « Négatifs » | Paramètres et test de l'API | Erreur réseau |
-|---|---|---|
-| ![](screenshots/05_filter_negative.png){width=95%} | ![](screenshots/02_popup_settings.png){width=95%} | ![](screenshots/08_network_error.png){width=95%} |
+### 5.3 CORS
 
-**Comment gérer les threads (réponses) ?**
-Chaque `ytd-comment-thread-renderer` contient le commentaire principal puis, dans
-`ytd-comment-replies-renderer`, les réponses dépliées. Le content script les distingue (`isReply`) ;
-une option permet de les inclure ou non, et elles sont marquées « réponse » dans la liste. Par défaut
-on ne les inclut pas : elles réagissent souvent au commentaire parent plutôt qu'à la vidéo.
+Un navigateur interdit par défaut à une page d'interroger un autre domaine que le sien ; c'est la politique de même origine. CORS est le mécanisme par lequel le serveur indique quelles origines il accepte. J'autorise les extensions Chrome (`chrome-extension://…`), `localhost` pour le développement et `youtube.com`, et rien d'autre : un site quelconque ne peut pas se servir de mon API depuis le navigateur de ses visiteurs. CORS ne remplace pas une authentification, puisque `curl` l'ignore complètement, mais ce n'était pas l'objet du TP.
 
-**Comment extraire des commentaires chargés dynamiquement ?**
-YouTube ne charge les commentaires qu'au défilement. Le content script fait défiler la page jusqu'en bas,
-attend environ 0,9 s, recompte, et s'arrête quand le nombre demandé est atteint ou après 4 itérations
-sans nouveau commentaire. Il revient ensuite à la position initiale. Les doublons sont filtrés. Si le
-script n'est pas présent (onglet ouvert avant l'installation), le popup l'injecte avec
-`chrome.scripting`.
+### 5.4 Chargement du modèle
 
-**Comment rester performant avec beaucoup de commentaires ?**
-Plafond configurable (50–500), envoi en lots de 100 pour limiter la taille des requêtes et afficher
-la progression, statistiques agrégées côté client, rendu de la liste via un `DocumentFragment` (une
-seule insertion dans le DOM), zone de liste à hauteur fixe défilante. Pour aller plus loin :
-virtualisation de la liste et cache des résultats par vidéo.
+Le modèle est chargé une seule fois, au démarrage, grâce au mécanisme `lifespan` de FastAPI, puis conservé en mémoire. Le recharger à chaque requête ajouterait des dizaines de millisecondes pour rien. Si le chargement échoue, par exemple parce qu'un fichier manque, l'API démarre quand même : `/health` passe à l'état « degraded » et `/predict_batch` répond 503. Je préfère un service qui explique son problème à un conteneur qui redémarre en boucle sans rien dire.
 
-## 8. Phase 6 — Déploiement Docker / Hugging Face
+## 6. L'extension Chrome
 
-- `python:3.10-slim`, utilisateur non-root UID 1000 (exigé par HF), port **7860**.
-- Couches ordonnées pour le cache : `requirements-prod.txt` puis `pip install` **avant** la copie du
-  code. Modifier le code ne relance pas l'installation des dépendances.
-- On ne copie que `src/utils`, `src/api`, `models/`, `app_api.py`. `.dockerignore` exclut données,
-  tests, extension, venv et `.git`.
-- `HEALTHCHECK` sur `/health`.
-- Le même dépôt Git a deux remotes : `origin` (GitHub) et `hf` (Space). Le bloc YAML du README
-  configure le Space (`sdk: docker`, `app_port: 7860`).
+### 6.1 Récupérer les commentaires
 
-**Pourquoi séparer requirements dev et prod ?**
-L'image de production n'a besoin que de servir le modèle. pandas, matplotlib, seaborn, pytest ne
-servent qu'à préparer les données, entraîner et tester. Les retirer réduit la taille de l'image, le
-temps de build et de démarrage, et la surface d'attaque (moins de paquets à surveiller pour les
-failles). Les versions de prod sont **figées** à l'identique de l'environnement d'entraînement.
+YouTube ne charge pas tous les commentaires d'un coup : ils arrivent par paquets à mesure que l'on fait défiler la page. Le script de contenu fait donc défiler la page jusqu'en bas, attend un peu moins d'une seconde, compte les commentaires, et recommence. Il s'arrête quand il a atteint le nombre demandé (50 à 500, réglable) ou quand quatre tentatives de suite n'ont rien apporté de nouveau, puis remet la page à sa position de départ.
 
-**Comment réduire la taille de l'image ?**
-Image `slim` (≈ 50 Mo au lieu de ≈ 1 Go pour l'image complète) ; `PIP_NO_CACHE_DIR` ; dépendances
-minimales ; `.dockerignore` strict ; modèle compressé (`joblib.dump(..., compress=3)`, ≈ 750 Ko).
-Pour aller plus loin : *multi-stage build* (compiler dans un étage, ne copier que le résultat) ou
-export ONNX pour se passer de scikit-learn/scipy.
+Chaque fil de discussion (`ytd-comment-thread-renderer`) contient le commentaire principal et, si l'utilisateur les a dépliées, ses réponses. Le script les distingue et une case à cocher permet de les inclure. Par défaut, je les laisse de côté : une réponse réagit le plus souvent au commentaire parent, pas à la vidéo, et elle fausserait le bilan.
 
-**Quelle stratégie pour les mises à jour du modèle ?**
-Version dans `models/metadata.json`, exposée par `/health` et chaque réponse. Le cycle est :
-ré-entraînement → la CI vérifie que les tests (dont les seuils de performance) passent → on compare
-au modèle en production sur le même test set → nouveau commit / tag → `git push hf` reconstruit
-l'image. Si le build ou le healthcheck échoue, l'ancienne version reste en ligne, et revenir en
-arrière se fait par `git revert`. À plus grande échelle : stocker les modèles sur le Hub HF ou dans
-un registre (MLflow), déploiement *canary*, surveillance de la dérive des données.
+Il fallait aussi gérer un cas pénible : si l'onglet YouTube était ouvert avant l'installation de l'extension, le script n'y est pas. Le popup le détecte et l'injecte lui-même avec `chrome.scripting`.
 
-## 9. Phase 7 — Tests et validation
+### 6.2 Interface
 
-`pytest` : **38 tests, tous verts.**
+J'ai voulu une interface sobre, dans le même esprit que ce rapport. Le popup affiche une barre de répartition empilée, les pourcentages et effectifs de chaque classe, un score global, la confiance moyenne et le temps de réponse. En dessous, la liste des commentaires indique pour chacun sa classe et sa confiance, et peut être filtrée par classe ou par mot-clé. On peut passer en mode sombre (le choix est mémorisé), copier un résumé ou exporter les résultats en CSV.
 
-| Fichier | Contenu |
+Tableau : Captures de l'extension
+
+| Résultats, thème clair | Filtre « positifs », thème sombre |
 |---|---|
-| `test_preprocessing.py` | URLs, mentions, hashtags, emojis, ponctuation, contractions, HTML, entrées vides ou non textuelles |
-| `test_model.py` | Seuils du TP sur le test set (accuracy ≥ 0,8, F1 > 0,75 par classe), cas évidents, cas limites (vide, très court, emojis seuls, 18 000 caractères, langues mélangées, ponctuation seule), latence < 100 ms, cohérence des statistiques |
-| `test_api.py` | `/health`, lots de 1 à 500, conservation du texte original, 6 payloads invalides → 422, JSON malformé, mauvaise méthode → 405, CORS accepté (extension) / refusé (origine inconnue), temps de réponse, modèle absent → 503 |
-| `integration_check.py` | Contre une API réelle (locale ou HF) : health, prédiction, **cohérence local/distant**, erreurs, temps de réponse par taille de lot |
+| ![](screenshots/04_popup_results_light.png) | ![](screenshots/06_popup_dark_positive.png) |
 
-Mesures sur l'API locale : 2,3 ms (lot de 10), 3,1 ms (50), 4,4 ms (100), 13,9 ms (500), aller-retour
-compris. Sur Hugging Face, ajouter la latence réseau (≈ 100–300 ms) et le réveil d'un Space en
-veille (jusqu'à environ 30 s au premier appel ; c'est pourquoi l'extension attend jusqu'à 30 s).
+Je n'utilise aucune bibliothèque externe, et le graphique est dessiné en HTML et CSS. C'était presque une obligation : le Manifest V3 interdit de charger du code distant, et embarquer une bibliothèque de graphiques entière pour une seule barre aurait été disproportionné. Les commentaires sont insérés dans la page avec `textContent` et jamais `innerHTML`, pour qu'un commentaire contenant du HTML ne puisse pas s'exécuter dans l'extension.
 
-**Test de bout en bout automatisé** (`tests/e2e/run_e2e.py`, Playwright + Chromium) : l'extension
-réelle est chargée dans Chromium, le popup interroge l'API réelle, et le content script lit une page
-servie à l'adresse `youtube.com/watch` qui reproduit la structure DOM des commentaires YouTube.
-YouTube ne charge pas ses commentaires dans un navigateur automatisé, d'où cette page de test ; tout
-autre trafic vers YouTube est bloqué. La page simule le chargement progressif (20 fils de discussion
-par défilement) et contient des réponses.
+### 6.3 Beaucoup de commentaires
+
+Pour qu'un grand nombre de commentaires reste fluide, l'extension les envoie par lots de 100 et affiche la progression. Elle recalcule les statistiques globales de son côté, et construit la liste en mémoire avant de l'insérer d'un seul coup dans la page. Au-delà de quelques milliers de commentaires, il faudrait virtualiser la liste et mettre en cache les résultats par vidéo.
+
+## 7. Conteneurisation et déploiement
+
+### 7.1 Le Dockerfile
+
+L'image part de `python:3.10-slim`, environ 50 Mo au lieu d'un gigaoctet pour l'image complète. Elle crée un utilisateur non administrateur d'identifiant 1000, comme Hugging Face l'exige, et expose le port 7860. L'ordre des instructions compte : je copie d'abord `requirements-prod.txt` et j'installe les dépendances, et seulement ensuite le code. Quand je modifie une ligne de Python, Docker reprend la couche des dépendances depuis son cache au lieu de tout réinstaller. Seuls `src/utils`, `src/api`, `models/` et `app_api.py` entrent dans l'image ; le `.dockerignore` écarte le reste. Un `HEALTHCHECK` interroge `/health` toutes les 30 secondes.
+
+### 7.2 Dépendances de développement et de production
+
+L'image n'a pas besoin de pandas, matplotlib, seaborn ou pytest, qui ne servent qu'à préparer les données, entraîner et tester. Les retirer rend l'image plus petite, plus rapide à construire et à démarrer, et réduit le nombre de paquets à surveiller pour les failles de sécurité. Pour la réduire encore, on pourrait faire un build multi-étapes, ou exporter le modèle au format ONNX pour se passer complètement de scikit-learn.
+
+### 7.3 Mise en ligne et mises à jour
+
+Le même dépôt Git a deux destinations : GitHub pour le code, et le Space Hugging Face, qui reconstruit l'image à chaque `git push`. L'en-tête YAML du README indique au Space d'utiliser Docker sur le port 7860.
+
+Pour mettre à jour le modèle, j'incrémente sa version dans `models/metadata.json`, et cette version est renvoyée par `/health` et dans chaque réponse. Le processus que je suivrais est le suivant : réentraîner, vérifier que les tests passent (ils contrôlent les seuils de performance), comparer au modèle en ligne sur le même jeu de test, puis pousser. Si le build échoue, l'ancienne version reste en ligne, et un `git revert` suffit pour revenir en arrière.
+
+## 8. Tests
+
+Les tests automatiques sont écrits avec pytest et répartis en trois fichiers ; les 38 passent.
+
+Tableau : Contenu des tests automatiques
+
+| Fichier | Ce qui est vérifié |
+|---|---|
+| `test_preprocessing.py` | URL, mentions, hashtags, emojis, ponctuation, apostrophes, HTML, entrées vides ou non textuelles |
+| `test_model.py` | Seuils de l'énoncé sur le jeu de test ; cas évidents ; cas limites (texte vide, très court, emojis seuls, 18 000 caractères, mélange de langues) ; latence ; cohérence des statistiques |
+| `test_api.py` | `/health` ; lots de 1 à 500 ; six requêtes invalides (422) ; JSON mal formé ; mauvaise méthode (405) ; CORS accepté pour l'extension et refusé pour une origine inconnue ; temps de réponse ; modèle absent (503) |
+
+Le script `tests/integration_check.py` vise une API réelle, locale ou en ligne. Il vérifie les deux points d'entrée et la gestion d'erreurs, mesure le temps de réponse selon la taille du lot, et contrôle surtout que l'API distante donne exactement les mêmes prédictions que le modèle local. En local, un lot de 50 commentaires fait l'aller-retour en 3 ms et un lot de 500 en 14 ms. Sur Hugging Face, il faut ajouter la latence réseau, et surtout le réveil du Space s'il était en veille, qui peut prendre une trentaine de secondes. C'est pour cela que l'extension patiente jusqu'à 30 secondes avant d'abandonner.
+
+Pour l'extension, j'ai écrit un test de bout en bout avec Playwright (`tests/e2e/run_e2e.py`). Il charge la vraie extension dans Chromium, interroge la vraie API, puis joue tout le scénario : test de connexion, analyse, filtres, recherche, thème sombre, copie, export CSV, option des réponses, et API coupée. YouTube n'affiche pas ses commentaires dans un navigateur automatisé ; le test sert donc à l'adresse `youtube.com/watch` une page qui reproduit leur structure HTML, avec 60 commentaires fictifs qui arrivent par paquets de 20 au défilement, comme sur le vrai site. Tout autre accès à YouTube est bloqué pendant le test.
+
+Tableau : Résultats du test de bout en bout
 
 | Vérification | Résultat |
 |---|---|
-| Chargement de l'extension, test de l'API (⚙) | OK, « modèle v1.0.0 » |
-| Défilement automatique jusqu'au plafond | 60/60 commentaires chargés en 3 vagues |
-| Analyse complète (extraction + API) | ≈ 6,5 s, surtout le défilement ; appels API de 80 à 215 ms selon l'exécution |
-| Option « inclure les réponses » | 63 éléments (60 + 3 réponses), marqués « réponse » |
-| Filtres, recherche, mode sombre | OK (captures ci-dessus) |
-| Copier / export CSV | Texte récapitulatif copié ; CSV de 60 lignes |
-| API injoignable | Message « Impossible de joindre l'API. Vérifiez l'URL dans ⚙. » |
-| Justesse sur les 60 commentaires de test | 57/60 conformes au sentiment attendu |
+| Défilement automatique | 60 commentaires sur 60, chargés en trois vagues |
+| Durée d'une analyse | Environ 6,5 s, presque entièrement due au défilement |
+| Réponses incluses | 63 éléments, dont 3 marqués comme réponses |
+| API injoignable | Message clair invitant à vérifier l'URL |
+| Justesse | 57 commentaires sur 60 classés comme je l'attendais |
 
-Reste à faire à la main : l'essai sur de vraies vidéos YouTube dans Chrome (populaire, peu de
-commentaires, commentaires désactivés), qui fait aussi l'objet de la vidéo de démonstration.
+L'essai sur de vraies vidéos, je l'ai fait à la main dans Chrome. C'est aussi ce que montre la vidéo de démonstration.
 
-## 10. Difficultés rencontrées et solutions
+## 9. Difficultés rencontrées
 
-| Difficulté | Solution |
-|---|---|
-| Python 3.15 installé sur la machine, trop récent pour scikit-learn 1.5 | Environnement créé avec `uv` en Python 3.10, identique à l'image Docker |
-| numpy 2.4 n'existe pas pour Python 3.10 : un modèle entraîné avec des versions différentes de la prod risquait d'échouer au `joblib.load` | Ré-entraînement dans un venv Python 3.10, versions de prod figées sur celles d'entraînement |
-| Simulation de l'image de prod : `ModuleNotFoundError: pandas` (la fonction de nettoyage vivait dans un module qui importe pandas) | `clean_text` déplacé dans `src/utils/text.py`, module léger partagé par l'entraînement et l'API |
-| Labels générés par TextBlob (voir § 5) | Limite documentée ; perspectives ci-dessous |
-| Commentaires YouTube chargés au défilement | Défilement automatique avec détection de stagnation |
-| Onglets ouverts avant l'installation : content script absent | Injection à la demande via `chrome.scripting.executeScript` |
-| YouTube ne charge pas les commentaires dans un navigateur automatisé | Test E2E sur une page reproduisant le DOM YouTube ; essai réel fait à la main |
-| La politique de sécurité (CSP) des extensions MV3 interdit `eval` et les scripts distants | Graphique en SVG natif, aucune bibliothèque externe ; le test E2E n'injecte pas de code dans le popup |
+**La plus instructive** est survenue au moment de préparer l'image Docker. Je n'avais pas Docker sur ma machine, alors j'ai reproduit son contenu exact dans un dossier vide : seulement les fichiers copiés par le Dockerfile, seulement les dépendances de production. L'API a refusé de démarrer avec une erreur `ModuleNotFoundError: pandas`. La fonction de nettoyage vivait dans le même fichier que le script de préparation des données, qui importe pandas en tête. En local, tout fonctionnait puisque pandas était installé. J'ai déplacé la fonction dans un petit module sans dépendance, `src/utils/text.py`, utilisé à la fois par l'entraînement et par l'API. Le nettoyage est donc garanti identique des deux côtés, et l'image n'embarque pas pandas.
 
-## 11. Améliorations futures
+**La deuxième** concerne les versions. J'avais commencé en Python 3.11 avec numpy 2.4, qui n'existe pas pour Python 3.10, la version imposée pour l'image. Un modèle entraîné avec une version et rechargé avec une autre risquait de ne pas se charger, ou de se charger avec un comportement différent. J'ai recréé l'environnement en 3.10 et réentraîné le modèle (les résultats sont identiques), puis figé les versions de production sur celles de l'entraînement.
 
-1. **Données** : annoter manuellement un échantillon de vrais commentaires YouTube (multilingues, avec
-   emojis) pour évaluer et ré-entraîner ; le dataset actuel reflète TextBlob, pas des humains.
-2. **Modèle** : gestion des négations (`not_bad`), puis un transformer léger (DistilBERT, ou XLM-R
-   pour le multilingue, dont le français et la darija) servi via ONNX ; calibration des probabilités.
-3. **MLOps** : CI GitHub Actions (tests + build Docker + déploiement automatique sur HF), suivi des
-   expériences (MLflow), versionnage des données (DVC), surveillance de la dérive en production.
-4. **API** : clé d'API et limitation du débit, cache des résultats par vidéo.
-5. **Extension** : API officielle YouTube Data v3 pour récupérer tous les commentaires sans
-   défilement, évolution du sentiment dans le temps, mots-clés par sentiment, publication sur le
-   Chrome Web Store.
+**Les autres** étaient plus terre à terre. Le port 8000 était déjà pris par un autre service sur ma machine, donc je développe sur le 8001. `localhost` était résolu en IPv6 alors que le conteneur écoutait en IPv4, et `127.0.0.1` a réglé le problème. Enfin, la politique de sécurité des extensions empêche d'évaluer du code dans le popup, ce qui m'a obligé à réécrire certaines attentes du test Playwright.
+
+## 10. Limites et perspectives
+
+La limite principale tient aux données plus qu'au modèle. Tant que les étiquettes viennent de TextBlob, aucun modèle entraîné dessus ne fera mieux que TextBlob. La première chose à faire serait d'annoter à la main quelques milliers de vrais commentaires YouTube, en anglais mais aussi en français et en darija, puisque ce sont les langues que je croise le plus. Il faudrait aussi traiter explicitement les négations, en fusionnant par exemple « not » avec le mot suivant, puis essayer un petit modèle de type transformer (DistilBERT, ou XLM-R pour le multilingue), exporté en ONNX pour rester rapide.
+
+Côté industrialisation, il manque une intégration continue qui lancerait les tests et reconstruirait l'image à chaque modification, un suivi des expériences (MLflow) et des données (DVC), une clé d'API avec limitation du nombre d'appels, et une surveillance de la dérive des données en production. Pour l'extension, passer par l'API officielle YouTube Data v3 permettrait de récupérer tous les commentaires sans faire défiler la page, et d'ajouter une évolution du sentiment dans le temps.
+
+## Conclusion
+
+Le système fonctionne de bout en bout. Un clic sur une vidéo suffit pour lire ses commentaires, les envoyer au modèle et afficher un bilan en quelques secondes, et le modèle dépasse les trois seuils fixés par l'énoncé. Ce que je retiens surtout du TP, cependant, ce sont deux leçons qui ne figuraient pas dans le sujet. La première : un bon score ne veut rien dire tant qu'on ne sait pas d'où viennent les étiquettes. La seconde : « ça marche sur ma machine » ne prouve pas grand-chose tant qu'on n'a pas essayé dans un environnement aussi dépouillé que la production.

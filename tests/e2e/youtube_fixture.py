@@ -8,7 +8,7 @@ Les commentaires et pseudos sont fictifs.
 import html
 import json
 
-TITLE = "Docker in 10 Minutes — Containers Explained for Beginners"
+TITLE = "Docker in 10 Minutes : Containers Explained for Beginners"
 
 COMMENTS = [
     ("@devmaria", "This is the best Docker tutorial I have ever watched, thank you so much!"),
@@ -90,7 +90,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>{title} - YouT
  ytd-comment-replies-renderer{{display:block;margin-left:48px}}
  .fixture{{background:#fff4ce;padding:6px 10px;border-radius:8px;font-size:12px}}
 </style></head><body>
-<div class="top"><b>▶</b>YouTube <span style="margin-left:12px;font-weight:400;font-size:12px">(page de test — structure DOM reproduite)</span></div>
+<div class="top"><b>▶</b>YouTube <span style="margin-left:12px;font-weight:400;font-size:12px">(page de test : structure DOM reproduite)</span></div>
 <div class="wrap">
  <div class="player">▶ vidéo</div>
  <h1 class="ytd-watch-metadata">{title}</h1>

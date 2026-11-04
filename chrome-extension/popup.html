@@ -2,82 +2,87 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>YouTube Sentiment Analyzer</title>
+  <title>Commentomètre</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <header>
-    <div class="brand">
-      <img src="icons/icon48.png" alt="" width="24" height="24">
-      <h1>Sentiment Analyzer</h1>
+  <header class="masthead">
+    <div>
+      <h1>Commentomètre</h1>
+      <p class="tagline">Ce que pensent les commentaires d'une vidéo</p>
     </div>
-    <div class="header-actions">
-      <button id="settingsBtn" class="icon-btn" title="Paramètres" aria-label="Paramètres">⚙</button>
-      <button id="themeBtn" class="icon-btn" title="Mode sombre / clair" aria-label="Basculer le thème">◐</button>
-    </div>
+    <nav>
+      <button id="settingsBtn" class="link" aria-label="Réglages">Réglages</button>
+      <span class="sep">·</span>
+      <button id="themeBtn" class="link" aria-label="Changer de thème">Thème</button>
+    </nav>
   </header>
 
-  <section id="settings" class="card hidden">
-    <label>URL de l'API
-      <input id="apiUrl" type="url" placeholder="https://<user>-<space>.hf.space">
-    </label>
-    <div class="row">
-      <label>Max commentaires
+  <section id="settings" class="settings hidden">
+    <label for="apiUrl">Adresse de l'API</label>
+    <input id="apiUrl" type="url" spellcheck="false" placeholder="https://utilisateur-espace.hf.space">
+    <div class="grid2">
+      <div>
+        <label for="maxComments">Commentaires à lire</label>
         <select id="maxComments">
           <option>50</option><option selected>100</option><option>200</option><option>500</option>
         </select>
-      </label>
-      <label class="check"><input id="includeReplies" type="checkbox"> Inclure les réponses</label>
+      </div>
+      <label class="check"><input id="includeReplies" type="checkbox"> inclure les réponses</label>
     </div>
-    <div class="row">
-      <button id="saveSettings" class="secondary">Enregistrer</button>
-      <button id="testApi" class="secondary">Tester l'API</button>
-      <span id="apiStatus" class="muted"></span>
+    <div class="actions">
+      <button id="saveSettings" class="btn ghost">Enregistrer</button>
+      <button id="testApi" class="btn ghost">Tester la connexion</button>
     </div>
+    <p id="apiStatus" class="status"></p>
   </section>
 
-  <button id="analyzeBtn" class="primary">Analyser les commentaires</button>
+  <button id="analyzeBtn" class="btn primary">Analyser cette vidéo</button>
 
-  <div id="loading" class="hidden">
-    <div class="spinner"></div><span id="loadingText">Extraction des commentaires…</span>
-  </div>
-  <div id="error" class="error hidden"></div>
+  <p id="loading" class="loading hidden"><span class="dots"></span><span id="loadingText">Lecture des commentaires…</span></p>
+  <p id="error" class="error hidden"></p>
 
   <section id="results" class="hidden">
     <p id="videoTitle" class="video-title"></p>
 
-    <div class="card summary">
-      <svg id="donut" viewBox="0 0 42 42" width="110" height="110" role="img" aria-label="Répartition des sentiments"></svg>
-      <div class="kpis">
-        <div class="kpi pos"><span class="dot"></span>Positif <b id="posPct">0%</b><small id="posN"></small></div>
-        <div class="kpi neu"><span class="dot"></span>Neutre <b id="neuPct">0%</b><small id="neuN"></small></div>
-        <div class="kpi neg"><span class="dot"></span>Négatif <b id="negPct">0%</b><small id="negN"></small></div>
+    <div class="headline">
+      <div class="score">
+        <span id="score" class="score-value">0</span>
+        <span class="score-label">score global<br>de −1 à +1</span>
       </div>
+      <p class="summary"><b id="total">0</b> commentaires analysés<br>
+        confiance moyenne <b id="conf">0 %</b><br>
+        réponse de l'API en <b id="latency">0</b> ms</p>
     </div>
 
-    <div class="meta">
-      <span><b id="total">0</b> commentaires</span>
-      <span>Score <b id="score">0</b></span>
-      <span>Confiance <b id="conf">0%</b></span>
-      <span><b id="latency">0</b> ms</span>
+    <div class="bar" id="bar" role="img" aria-label="Répartition des sentiments">
+      <span class="seg pos" id="segPos"></span><span class="seg neu" id="segNeu"></span><span class="seg neg" id="segNeg"></span>
     </div>
 
-    <div class="toolbar">
-      <div class="filters" role="tablist">
-        <button class="filter active" data-filter="all">Tous</button>
-        <button class="filter" data-filter="1">Positifs</button>
-        <button class="filter" data-filter="0">Neutres</button>
-        <button class="filter" data-filter="-1">Négatifs</button>
-      </div>
-      <div class="exports">
-        <button id="copyBtn" class="secondary small" title="Copier les résultats">Copier</button>
-        <button id="csvBtn" class="secondary small" title="Exporter en CSV">CSV</button>
-      </div>
-    </div>
-    <input id="search" type="search" placeholder="Rechercher dans les commentaires…">
+    <table class="breakdown">
+      <thead><tr><th>Sentiment</th><th>Effectif</th><th>Part</th></tr></thead>
+      <tbody>
+        <tr><td><i class="sw pos"></i>Positif</td><td id="posN">0</td><td id="posPct">0 %</td></tr>
+        <tr><td><i class="sw neu"></i>Neutre</td><td id="neuN">0</td><td id="neuPct">0 %</td></tr>
+        <tr><td><i class="sw neg"></i>Négatif</td><td id="negN">0</td><td id="negPct">0 %</td></tr>
+      </tbody>
+    </table>
 
-    <ul id="commentList"></ul>
+    <div class="tabs" role="tablist">
+      <button class="filter active" data-filter="all">Tous</button>
+      <button class="filter" data-filter="1">Positifs</button>
+      <button class="filter" data-filter="0">Neutres</button>
+      <button class="filter" data-filter="-1">Négatifs</button>
+      <span class="spacer"></span>
+      <button id="copyBtn" class="link small" title="Copier le résumé et la liste">Copier</button>
+      <button id="csvBtn" class="link small" title="Télécharger au format CSV">CSV</button>
+    </div>
+    <input id="search" type="search" placeholder="Chercher un mot…">
+
+    <ol id="commentList"></ol>
   </section>
+
+  <footer class="colophon">Projet de TP · ENSAM Rabat · Z. Hsain</footer>
 
   <script src="popup.js"></script>
 </body>

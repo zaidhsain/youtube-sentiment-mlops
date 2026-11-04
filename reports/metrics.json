@@ -6,7 +6,7 @@
     "Neutre": 0.9358,
     "Positif": 0.9022
   },
-  "latency_ms_batch50": 0.74,
+  "latency_ms_batch50": 0.76,
   "best_params": {
     "clf__C": "20",
     "tfidf__max_features": "30000",

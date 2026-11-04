@@ -1,4 +1,4 @@
-"""Phase 2.1 — Téléchargement du dataset Reddit labelisé.
+"""Phase 2.1 : Téléchargement du dataset Reddit labelisé.
 
 Usage : python -m src.data.download_data
 """
