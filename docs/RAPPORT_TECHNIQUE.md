@@ -16,7 +16,7 @@ Un créateur de contenu reçoit des centaines, parfois des milliers de commentai
 
 ### 1.2 La solution
 
-Le système comporte quatre briques : un modèle TF-IDF et régression logistique entraîné sur 36 449 commentaires, une API FastAPI qui sert ce modèle, une extension Chrome qui lit les commentaires de la vidéo ouverte et affiche le bilan, et une suite de tests. L'API est conteneurisée avec Docker et prévue pour être exposée depuis un GitHub Codespace, sur le port 7860 rendu public.
+Le système comporte quatre briques : un modèle TF-IDF et régression logistique entraîné sur 36 449 commentaires, une API FastAPI qui sert ce modèle, une extension Chrome qui lit les commentaires de la vidéo ouverte et affiche le bilan, et une suite de tests. L'API est conteneurisée avec Docker et exposée depuis un GitHub Codespace, sur le port 7860 public.
 
 ### 1.3 État d'avancement
 
@@ -26,12 +26,12 @@ Tableau : État des livrables demandés
 |---|---|
 | Code source, Dockerfile | Terminé, dépôt GitHub créé, image construite par GitHub Actions |
 | Modèle et rapport de performance | Terminé (`models/`, `reports/`) |
-| API | Fonctionne en local ; configuration Codespaces prête, URL publique à ouvrir pour la démonstration |
+| API | En ligne sur GitHub Codespaces, port 7860 public |
 | Extension Chrome | Terminée, essayée sur de vraies vidéos YouTube ; guide utilisateur fourni |
 | README et rapport | Terminés |
-| Vidéo de démonstration | Terminée (5 min 02, sans voix) |
+| Vidéo de démonstration | Terminée (5 min 03, sans voix) |
 
-Un point reste ouvert : l'URL publique de l'API n'a pas encore été ouverte et testée. Docker n'étant pas installé sur ma machine, l'image est construite et vérifiée par GitHub Actions (section 3.6).
+L'API répond à l'adresse `https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev` tant que le Codespace tourne. Docker n'étant pas installé sur ma machine, l'image est construite et vérifiée par GitHub Actions (section 3.6).
 
 ## 2. Architecture détaillée
 
@@ -120,7 +120,7 @@ Le modèle est chargé une seule fois au démarrage, grâce au `lifespan` de Fas
 
 L'extension utilise le Manifest V3 sans bibliothèque externe : la barre de répartition et les tuiles sont en HTML et CSS. Les commentaires sont insérés avec `textContent`, pour qu'un commentaire contenant du HTML ne soit jamais interprété.
 
-YouTube charge les commentaires au fil du défilement. Le script se place sur la section des commentaires, attend le premier jusqu'à 12 secondes, puis fait défiler la page jusqu'à atteindre le plafond choisi (50 à 500) ou jusqu'à quatre tentatives sans nouveauté. La page revient ensuite à sa position de départ.
+YouTube charge les commentaires au fil du défilement. Le script se place sur la section des commentaires, attend le premier jusqu'à 12 secondes, puis fait défiler la page jusqu'à atteindre le plafond choisi (50 à 500) ou jusqu'à dix tentatives sans nouveauté. La page revient ensuite à sa position de départ.
 
 Chaque fil (`ytd-comment-thread-renderer`) contient le commentaire et ses réponses dépliées. Le script les distingue et une option permet de les inclure. Elles sont exclues par défaut, car une réponse réagit souvent au commentaire parent plutôt qu'à la vidéo.
 
@@ -132,7 +132,7 @@ L'image part de `python:3.10-slim`, tourne avec un utilisateur non root d'identi
 
 `requirements-prod.txt` ne garde que ce qui sert le modèle, avec des versions exactes. pandas, matplotlib ou pytest n'ont rien à faire en production : les retirer allège l'image et réduit le nombre de paquets à surveiller. Pour aller plus loin, on pourrait exporter le modèle en ONNX et se passer de scikit-learn.
 
-Le dossier `.devcontainer` prépare un GitHub Codespace en Python 3.10 : il installe les dépendances de production et lance l'API sur le port 7860, qu'il reste à rendre public. L'URL n'existe que pendant que le Codespace tourne, ce qui convient à une démonstration mais pas à un service permanent.
+Le dossier `.devcontainer` prépare un GitHub Codespace en Python 3.10 : il installe les dépendances de production et lance l'API sur le port 7860. L'URL n'existe que pendant que le Codespace tourne, et le port repasse en privé à chaque redémarrage : le script `demarrer_api_cloud.sh` le rouvre avant une démonstration. Cela convient à une démonstration, pas à un service permanent.
 
 Pour mettre à jour le modèle, j'incrémente sa version dans `metadata.json`, exposée par `/health`. Je réentraîne, je vérifie les tests, qui contrôlent les seuils de performance, je compare au modèle en place sur le même jeu de test, puis je pousse sur GitHub et je relance l'API dans le Codespace. Un `git revert` permet de revenir en arrière.
 
@@ -164,13 +164,14 @@ Les étiquettes viennent donc de TextBlob et non d'annotateurs humains. Cela cha
 
 Les 38 tests pytest passent sur ma machine, et GitHub Actions les relance à chaque envoi, sauf le contrôle des seuils sur le jeu de test, qui demande les données. Ils couvrent le nettoyage, le modèle (seuils de l'énoncé, cas limites, latence) et l'API (tailles de lot, requêtes invalides, CORS, modèle absent). Le script `integration_check.py` vérifie une API réelle : en local, tous ses contrôles passent, dont la cohérence entre l'API et le modèle chargé directement.
 
-Tableau : Temps de réponse de l'API en local (aller-retour, médiane de 5 appels)
+Tableau : Temps de réponse de l'API (aller-retour, médiane de 5 appels)
 
 | Lot | 10 | 50 | 100 | 500 |
 |---|---|---|---|---|
-| Temps | 3,1 ms | 3,4 ms | 5,1 ms | 17,1 ms |
+| En local | 3,1 ms | 3,4 ms | 5,1 ms | 17,1 ms |
+| En ligne (Codespaces) | 364 ms | 234 ms | 266 ms | 390 ms |
 
-Ces temps ne comprennent pas la latence réseau d'un hébergement distant, qui reste à mesurer une fois l'API en ligne.
+En ligne, la latence réseau domine : le temps varie peu avec la taille du lot. Le même script confirme que l'API publique donne les mêmes prédictions que le modèle local.
 
 Le test `run_e2e.py` pilote l'extension dans Chromium sur une page qui reproduit la structure des commentaires YouTube, avec 60 commentaires fictifs arrivant par paquets. Les 60 sont lus, 63 avec les réponses, les filtres, la recherche, le thème, la copie et le CSV fonctionnent, et une API coupée produit un message clair. J'ai relu ces 60 prédictions : 57 correspondent au sentiment que j'attendais.
 
@@ -180,16 +181,16 @@ Tableau : Analyses de vraies vidéos YouTube (plafond de 100 commentaires, 200 a
 
 | Vidéo | Commentaires | Positifs | Neutres | Négatifs | Score |
 |---|---|---|---|---|---|
-| Rick Astley, *Never Gonna Give You Up* | 99 | 31,3 % | 61,6 % | 7,1 % | +0,24 |
-| PSY, *Gangnam Style* | 200 | 22,5 % | 71,5 % | 6,0 % | +0,17 |
-| Ed Sheeran, *Shape of You* | 100 | 31,0 % | 61,0 % | 8,0 % | +0,23 |
+| *Daily English Conversations About Emergencies & Safety* | 96 | 51,0 % | 43,8 % | 5,2 % | +0,46 |
+| PSY, *Gangnam Style* | 197 | 23,4 % | 70,6 % | 6,1 % | +0,17 |
+| Rick Astley, *Never Gonna Give You Up* | 99 | 30,3 % | 61,6 % | 8,1 % | +0,22 |
 | Documentaire en arabe et en darija | 100 | 6,0 % | 93,0 % | 1,0 % | +0,05 |
 
 | Résultat, thème clair | Thème sombre |
 |---|---|
-| ![](screenshots/11_rick_astley_clair.png) | ![](screenshots/12_rick_astley_sombre.png) |
+| ![](screenshots/11_resultat_clair.png) | ![](screenshots/12_resultat_sombre.png) |
 
-L'extension lit bien de vrais commentaires, et l'appel à l'API a pris entre 29 et 192 ms selon les essais. Les chiffres varient légèrement d'une analyse à l'autre, car les commentaires affichés changent. Ces résultats sont à lire avec prudence. La part de neutres est élevée, en partie parce que beaucoup de commentaires sont des blagues sans mot d'opinion. La dernière ligne montre surtout que le modèle ne comprend pas l'arabe : ces 93 % de neutres ne disent rien de l'accueil réel de la vidéo. Le popup a été ouvert dans sa propre fenêtre pour ces essais, et je n'ai pas évalué la justesse de ces prédictions faute d'annotation.
+L'extension lit bien de vrais commentaires, et l'appel à l'API publique prend quelques centaines de millisecondes. Les chiffres varient légèrement d'une analyse à l'autre, car les commentaires affichés changent. Ces résultats sont à lire avec prudence. La part de neutres est élevée, en partie parce que beaucoup de commentaires sont des blagues sans mot d'opinion. La dernière ligne montre surtout que le modèle ne comprend pas l'arabe : ces 93 % de neutres ne disent rien de l'accueil réel de la vidéo. Le popup a été ouvert dans sa propre fenêtre pour ces essais, et je n'ai pas évalué la justesse de ces prédictions faute d'annotation.
 
 ## 5. Difficultés rencontrées et solutions
 
@@ -199,7 +200,8 @@ Tableau : Principales difficultés
 |---|---|---|
 | L'API ne démarrait pas avec les seules dépendances de production (`ModuleNotFoundError: pandas`) | `clean_text` était dans un fichier qui importe pandas ; en local, pandas masquait le problème | Déplacement dans `src/utils/text.py`, sans dépendance lourde |
 | numpy 2.4 indisponible pour Python 3.10, version de l'image | J'avais commencé en Python 3.11 | Environnement recréé en 3.10, modèle réentraîné (mêmes résultats sur le test), versions figées |
-| « Aucun commentaire trouvé » sur des vidéos qui en ont | L'extension abandonnait après 3,6 s, même si YouTube n'avait encore rien renvoyé | Attente du premier commentaire, jusqu'à 12 s |
+| « Aucun commentaire trouvé », ou bilan limité à 20 commentaires | L'extension abandonnait après 3,6 s sans nouveauté | Attente du premier commentaire, patience accrue, léger défilement vers le haut pour relancer le chargement |
+| Codespace en échec, puis API absente au démarrage | Module docker-in-docker non installable ; processus tué en fin de démarrage | Module retiré ; script `start_api.sh` qui détache l'API |
 | Score élevé, mais erreurs absurdes | Étiquettes produites par TextBlob | Vérification sur tout le jeu de données, limite documentée |
 | Pas de Docker sur ma machine | Image impossible à construire en local | Essai dans un environnement vierge, puis construction et test de l'image par GitHub Actions |
 | Le port 8000 était déjà occupé | Un autre service local | API de développement sur le port 8001 |
@@ -212,11 +214,11 @@ La priorité concerne les données. Tant que les étiquettes viennent de TextBlo
 
 Côté modèle, on pourrait traiter les négations, puis essayer un petit transformer multilingue comme XLM-R, exporté en ONNX pour rester rapide. Il faudrait aussi vérifier la calibration des probabilités : avec C = 20, le modèle affiche souvent une confiance très élevée.
 
-Côté MLOps, il reste à ouvrir l'URL publique, puis à passer à un hébergement permanent, avec un suivi des expériences par MLflow et une surveillance de la dérive des données. Une clé d'API limiterait les abus. Enfin, l'API officielle YouTube Data v3 permettrait de récupérer tous les commentaires sans faire défiler la page.
+Côté MLOps, il faudrait passer à un hébergement permanent, avec un suivi des expériences par MLflow et une surveillance de la dérive des données. Une clé d'API limiterait les abus. Enfin, l'API officielle YouTube Data v3 permettrait de récupérer tous les commentaires sans faire défiler la page.
 
 ## Conclusion
 
-Le système fonctionne en local de bout en bout : un clic suffit pour lire les commentaires d'une vidéo et obtenir un bilan en quelques secondes, et le modèle dépasse les trois seuils de l'énoncé. L'image Docker est construite et vérifiée, et il reste à ouvrir l'URL publique de l'API. Je retiens surtout deux leçons : un bon score ne vaut que ce que valent les étiquettes, et un code qui marche sur ma machine n'est pas encore prouvé tant qu'il n'a pas tourné dans un environnement proche de la production.
+Le système fonctionne de bout en bout : un clic suffit pour lire les commentaires d'une vidéo et obtenir un bilan en quelques secondes, et le modèle dépasse les trois seuils de l'énoncé. L'image Docker est construite et vérifiée, et l'API est accessible publiquement. Je retiens surtout deux leçons : un bon score ne vaut que ce que valent les étiquettes, et un code qui marche sur ma machine n'est pas encore prouvé tant qu'il n'a pas tourné dans un environnement proche de la production.
 
 ## Annexe : questions de réflexion
 

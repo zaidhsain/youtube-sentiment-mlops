@@ -1,9 +1,8 @@
 // Commentomètre : popup
 // Récupère les commentaires via content.js, les envoie à l'API, affiche le bilan.
 
-// API locale (le port 8000 est déjà pris sur ma machine). Pour la démonstration,
-// saisir l'URL publique du Codespace dans les réglages.
-const DEFAULT_API_URL = "http://127.0.0.1:8001";
+// URL publique de l'API (GitHub Codespaces, port 7860). Elle se change dans les réglages.
+const DEFAULT_API_URL = "https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev";
 const BATCH_SIZE = 100;
 // Délai large : une API distante peut mettre du temps à répondre au premier appel.
 const REQUEST_TIMEOUT_MS = 30000;

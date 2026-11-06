@@ -18,7 +18,7 @@ DOCS = Path(__file__).resolve().parent
 SRC = DOCS / "RAPPORT_TECHNIQUE.md"
 OUT = DOCS / "Rapport_Technique.pdf"
 GITHUB = sys.argv[1] if len(sys.argv) > 1 else "https://github.com/zaidhsain/youtube-sentiment-mlops"
-API = sys.argv[2] if len(sys.argv) > 2 else "URL Codespaces à ouvrir pour la démonstration"
+API = sys.argv[2] if len(sys.argv) > 2 else "https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev"
 
 AUTHOR = "Zaid Hsain"
 SUPERVISOR = "Pr. Maria Zemzami"

@@ -2,9 +2,9 @@
 
 TP3 de Cloud Computing (ENSAM Rabat, filière INDIA, 2026-2027), réalisé par Zaid Hsain.
 
-Une extension Chrome qui lit les commentaires d'une vidéo YouTube et dit s'ils sont plutôt positifs, neutres ou négatifs. Le classement est fait par un modèle scikit-learn (TF-IDF + régression logistique) servi par une petite API FastAPI. L'API est conteneurisée avec Docker et prévue pour être exposée depuis GitHub Codespaces sur le port 7860.
+Une extension Chrome qui lit les commentaires d'une vidéo YouTube et dit s'ils sont plutôt positifs, neutres ou négatifs. Le classement est fait par un modèle scikit-learn (TF-IDF + régression logistique) servi par une petite API FastAPI. L'API est conteneurisée avec Docker et exposée depuis GitHub Codespaces : `https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev` (quand le Codespace tourne).
 
-<p align="center"><img src="docs/screenshots/11_rick_astley_clair.png" width="300" alt="Popup de l'extension"> &nbsp; <img src="docs/screenshots/12_rick_astley_sombre.png" width="300" alt="Popup en thème sombre"></p>
+<p align="center"><img src="docs/screenshots/11_resultat_clair.png" width="300" alt="Popup de l'extension"> &nbsp; <img src="docs/screenshots/12_resultat_sombre.png" width="300" alt="Popup en thème sombre"></p>
 
 ## Comment ça marche
 
@@ -82,7 +82,7 @@ python tests/integration_check.py https://<nom-du-codespace>-7860.app.github.dev
 
 5. Coller cette URL dans l'extension (**Réglages**, puis **Tester l'API**).
 
-L'URL ne fonctionne que pendant que le Codespace tourne : il faut le démarrer avant la démonstration. Si l'API n'a pas démarré, la lancer à la main : `bash .devcontainer/start_api.sh`.
+L'URL ne fonctionne que pendant que le Codespace tourne, et le port repasse en privé à chaque redémarrage : lancer `./demarrer_api_cloud.sh` avant la démonstration. Si l'API n'a pas démarré, la lancer à la main : `bash .devcontainer/start_api.sh`.
 
 Le Dockerfile permet aussi de lancer l'API en conteneur : `docker build -t commentometre . && docker run -p 7860:7860 commentometre`.
 

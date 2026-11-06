@@ -8,11 +8,12 @@ est donc chargée par la commande Extensions.loadUnpacked ; et le popup est ouve
 fenêtre (popup.html?tabId=…), car le popup de la barre d'outils n'est pas filmable non plus.
 Le script s'arrête si une analyse échoue.
 
-Prérequis : pip install playwright imageio-ffmpeg pillow, API lancée sur le port 8001.
-Usage     : python tests/e2e/record_demo.py <video.mp4> <resultats.json> <dossier_captures>
+Prérequis : pip install playwright imageio-ffmpeg pillow, API accessible (variable API_URL).
+Usage     : API_URL=<url> python tests/e2e/record_demo.py <video.mp4> <resultats.json> <dossier_captures>
 """
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -27,14 +28,14 @@ OUT, RESULTS, SHOTS = sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3])
 ROOT = Path(__file__).resolve().parents[2]
 EXT = str(ROOT / "chrome-extension")
 EXT_ID = "cmipaanhhmabdagfjolahadjmdmddlee"
-API = "http://127.0.0.1:8001"
+API = os.environ.get("API_URL", "http://127.0.0.1:8001")
 APP = Path.home() / "Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app"
 BIN = APP / "Contents/MacOS/Google Chrome for Testing"
 PROFILE = Path.home() / ".commentometre-navigateur"
 VIDEOS = {
-    "rick": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "rick": "https://www.youtube.com/watch?v=m85MeUJCYac",
     "gangnam": "https://www.youtube.com/watch?v=9bZkp7q19f0",
-    "shape": "https://www.youtube.com/watch?v=JGwWNGJdvx8",
+    "shape": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 }
 W, H, FPS = 1920, 1080, 12
 POPUP_W = 380
@@ -171,8 +172,14 @@ def launch_browser():
 
 
 def swagger(rec, ctx):
-    page = next(pg for pg in ctx.pages if "/health" in pg.url)
+    page = ctx.pages[0]
     page.bring_to_front()
+    page.wait_for_timeout(1500)
+    warning = page.get_by_role("button", name="Continue")   # avertissement GitHub, une fois par session
+    if warning.count():
+        warning.click()
+        page.wait_for_load_state("networkidle")
+    page.goto(f"{API}/health")
     rec.left = page
     rec.still(7)
     page.goto(f"{API}/docs", wait_until="networkidle")
@@ -284,7 +291,7 @@ def main():
         # Vidéo 1 : toutes les fonctions
         analyze("Vidéo 1")
         rec.still(12)
-        save_popup(rec, popup, "11_rick_astley_clair.png")
+        save_popup(rec, popup, "11_resultat_clair.png")
         scroll_list()
         for flt in ("1", "0", "-1"):
             rec.click("right", L(f".filter[data-filter='{flt}']"))
@@ -293,12 +300,12 @@ def main():
         rec.click("right", L(".filter[data-filter='all']"))
         rec.still(3)
         rec.click("right", L("#search"))
-        L("#search").press_sequentially("rick", delay=180)
+        L("#search").press_sequentially("the", delay=180)
         rec.still(7)
         L("#search").fill("")
         rec.click("right", L("#themeBtn"))
         rec.still(6)
-        save_popup(rec, popup, "12_rick_astley_sombre.png")
+        save_popup(rec, popup, "12_resultat_sombre.png")
         scroll_list(6)
         rec.click("right", L("#themeBtn"))
         rec.still(3)

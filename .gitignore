@@ -37,3 +37,6 @@ TP_cloudComputing*.pdf
 
 # Fichiers temporaires de génération
 docs/_rapport.html
+
+# Copies locales du zip
+TP3_Zaid_Hsain/

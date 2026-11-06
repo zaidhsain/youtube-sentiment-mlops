@@ -10,6 +10,7 @@
   const TEXT_SEL = "#content-text";
   const AUTHOR_SEL = "#author-text";
   const REPLY_SEL = "ytd-comment-replies-renderer";
+  const MAX_STALE = 10;   // tentatives sans nouveau commentaire avant de s'arrêter
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -53,11 +54,20 @@
     if (autoScroll) {
       await waitForFirstComments();
       let last = -1, stale = 0;
-      while (stale < 4) {
-        const n = document.querySelectorAll(THREAD_SEL).length;
+      // YouTube peut mettre plusieurs secondes à envoyer le paquet suivant : on patiente
+      // assez longtemps, sinon le bilan porterait sur le premier paquet seulement.
+      while (stale < MAX_STALE) {
+        const threads = document.querySelectorAll(THREAD_SEL);
+        const n = threads.length;
         if (n >= max) break;
         stale = n === last ? stale + 1 : 0;
         last = n;
+        if (stale > 0) {
+          // Le marqueur de chargement doit ressortir de l'écran pour se déclencher à nouveau.
+          window.scrollBy(0, -900);
+          await sleep(250);
+        }
+        threads[n - 1]?.scrollIntoView({ block: "end" });
         window.scrollTo(0, document.documentElement.scrollHeight);
         await sleep(900);
       }

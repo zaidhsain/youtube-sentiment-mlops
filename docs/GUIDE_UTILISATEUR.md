@@ -9,7 +9,7 @@
 
 ## Connexion à l'API
 
-Ouvrir les réglages (⚙️), coller l'adresse de l'API, cliquer sur **Enregistrer**, puis sur **Tester l'API**. Un message confirme que le modèle est chargé. On choisit aussi ici le nombre de commentaires à lire, et si les réponses sont incluses.
+L'extension utilise par défaut l'API publique. Pour en changer, ouvrir les réglages (⚙️), coller l'adresse de l'API, cliquer sur **Enregistrer**, puis sur **Tester l'API**. Un message confirme que le modèle est chargé. On choisit aussi ici le nombre de commentaires à lire, et si les réponses sont incluses.
 
 ![Réglages](screenshots/02_popup_settings.png)
 
@@ -19,7 +19,7 @@ Ouvrir les réglages (⚙️), coller l'adresse de l'API, cliquer sur **Enregist
 2. Cliquer sur l'icône de l'extension, puis sur **Analyser cette vidéo**.
 3. Laisser la page défiler toute seule quelques secondes, puis lire le bilan.
 
-![Résultat sur une vraie vidéo](screenshots/11_rick_astley_clair.png)
+![Résultat sur une vraie vidéo](screenshots/11_resultat_clair.png)
 
 ## Lire le résultat
 
@@ -35,7 +35,7 @@ L'emoji et la phrase résument l'humeur générale. Le score va de −1 (tout n�
 | Copier | Copie le résumé et la liste affichée |
 | CSV | Télécharge les résultats, lisibles dans Excel |
 
-![Thème sombre](screenshots/12_rick_astley_sombre.png)
+![Thème sombre](screenshots/12_resultat_sombre.png)
 
 ## En cas de problème
 
