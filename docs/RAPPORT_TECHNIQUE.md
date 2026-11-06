@@ -24,12 +24,12 @@ Tableau : État des livrables demandés
 
 | Livrable | État |
 |---|---|
-| Code source, Dockerfile | Terminé, versionné avec Git ; dépôt GitHub à publier |
+| Code source, Dockerfile | Terminé, dépôt GitHub créé |
 | Modèle et rapport de performance | Terminé (`models/`, `reports/`) |
 | API | Fonctionne en local ; configuration Codespaces prête, URL publique à ouvrir pour la démonstration |
 | Extension Chrome | Terminée, essayée sur de vraies vidéos YouTube ; guide utilisateur fourni |
 | README et rapport | Terminés |
-| Vidéo de démonstration | Terminée (1 minute, sans voix) |
+| Vidéo de démonstration | Terminée (5 min 02, sans voix) |
 
 Deux points restent donc ouverts : l'API n'est pas encore en ligne, et l'image Docker n'a pas été construite, Docker n'étant pas installé sur ma machine. J'ai vérifié à la place que l'API démarre dans un environnement réduit aux seuls fichiers et dépendances de l'image (section 5).
 
@@ -176,19 +176,20 @@ Le test `run_e2e.py` pilote l'extension dans Chromium sur une page qui reproduit
 
 ### 4.4 Essais sur de vraies vidéos
 
-Tableau : Analyses de vraies vidéos YouTube (plafond de 100 commentaires)
+Tableau : Analyses de vraies vidéos YouTube (plafond de 100 commentaires, 200 avec réponses pour *Gangnam Style*)
 
 | Vidéo | Commentaires | Positifs | Neutres | Négatifs | Score |
 |---|---|---|---|---|---|
-| Rick Astley, *Never Gonna Give You Up* | 99 | 34,3 % | 57,6 % | 8,1 % | +0,26 |
-| PSY, *Gangnam Style* | 100 | 21,0 % | 75,0 % | 4,0 % | +0,17 |
+| Rick Astley, *Never Gonna Give You Up* | 99 | 31,3 % | 61,6 % | 7,1 % | +0,24 |
+| PSY, *Gangnam Style* | 200 | 22,5 % | 71,5 % | 6,0 % | +0,17 |
+| Ed Sheeran, *Shape of You* | 100 | 31,0 % | 61,0 % | 8,0 % | +0,23 |
 | Documentaire en arabe et en darija | 100 | 6,0 % | 93,0 % | 1,0 % | +0,05 |
 
 | Résultat, thème clair | Thème sombre |
 |---|---|
 | ![](screenshots/11_rick_astley_clair.png) | ![](screenshots/12_rick_astley_sombre.png) |
 
-L'extension lit bien de vrais commentaires, et l'appel à l'API a pris entre 30 et 125 ms selon les essais. Ces résultats sont à lire avec prudence. La part de neutres est élevée, en partie parce que beaucoup de commentaires sont des blagues sans mot d'opinion. La troisième ligne montre surtout que le modèle ne comprend pas l'arabe : ces 93 % de neutres ne disent rien de l'accueil réel de la vidéo. Le popup a été ouvert dans sa propre fenêtre pour ces essais, et je n'ai pas évalué la justesse de ces prédictions faute d'annotation.
+L'extension lit bien de vrais commentaires, et l'appel à l'API a pris entre 29 et 192 ms selon les essais. Les chiffres varient légèrement d'une analyse à l'autre, car les commentaires affichés changent. Ces résultats sont à lire avec prudence. La part de neutres est élevée, en partie parce que beaucoup de commentaires sont des blagues sans mot d'opinion. La dernière ligne montre surtout que le modèle ne comprend pas l'arabe : ces 93 % de neutres ne disent rien de l'accueil réel de la vidéo. Le popup a été ouvert dans sa propre fenêtre pour ces essais, et je n'ai pas évalué la justesse de ces prédictions faute d'annotation.
 
 ## 5. Difficultés rencontrées et solutions
 

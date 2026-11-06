@@ -1,60 +1,44 @@
-"""Enregistre la vidéo de démonstration : navigateur visible, extension réelle, vraies vidéos YouTube.
+"""Enregistre la vidéo de démonstration : uniquement YouTube et le système, sans texte ajouté.
 
-Le navigateur doit être lancé avant, avec --remote-debugging-port=9333, et rester visible.
-Le popup est ouvert dans sa propre fenêtre (popup.html?tabId=…), car le popup de la barre
-d'outils n'est pas filmable par ce moyen. Le script s'arrête si une analyse échoue.
+Séquence : installation dans chrome://extensions, appel réel à l'API dans Swagger, analyses
+de vraies vidéos YouTube, toutes les fonctions du popup, puis une API injoignable.
+
+Limites de la capture : le dialogue natif de choix de dossier n'est pas filmable, l'extension
+est donc chargée par la commande Extensions.loadUnpacked ; et le popup est ouvert dans sa propre
+fenêtre (popup.html?tabId=…), car le popup de la barre d'outils n'est pas filmable non plus.
+Le script s'arrête si une analyse échoue.
 
 Prérequis : pip install playwright imageio-ffmpeg pillow, API lancée sur le port 8001.
-Usage     : python tests/e2e/record_demo.py <dossier_ressources> <video.mp4> <resultats.json>
+Usage     : python tests/e2e/record_demo.py <video.mp4> <resultats.json> <dossier_captures>
 """
 import io
 import json
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 import imageio_ffmpeg
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from playwright.sync_api import sync_playwright
 
-ASSETS, OUT, RESULTS = Path(sys.argv[1]), sys.argv[2], Path(sys.argv[3])
+OUT, RESULTS, SHOTS = sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3])
 ROOT = Path(__file__).resolve().parents[2]
+EXT = str(ROOT / "chrome-extension")
 EXT_ID = "cmipaanhhmabdagfjolahadjmdmddlee"
-APP = str(Path.home() / "Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app")
-VIDEOS = ["https://www.youtube.com/watch?v=dQw4w9WgXcQ", "https://www.youtube.com/watch?v=9bZkp7q19f0"]
 API = "http://127.0.0.1:8001"
+APP = Path.home() / "Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app"
+BIN = APP / "Contents/MacOS/Google Chrome for Testing"
+PROFILE = Path.home() / ".commentometre-navigateur"
+VIDEOS = {
+    "rick": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "gangnam": "https://www.youtube.com/watch?v=9bZkp7q19f0",
+    "shape": "https://www.youtube.com/watch?v=JGwWNGJdvx8",
+}
 W, H, FPS = 1920, 1080, 12
-HOLD = 1.45   # marge de lecture sur les plans fixes
 POPUP_W = 380
-BG, INK, ACCENT, MUTED = "#12111c", "#f1effa", "#d9a8ff", "#a49fbd"
-SANS = "/System/Library/Fonts/Helvetica.ttc"
-MONO = "/System/Library/Fonts/Menlo.ttc"
-
-
-def font(size, path=SANS):
-    return ImageFont.truetype(path, size)
-
-
-def wrap(draw, text, fnt, width):
-    lines = []
-    for para in text.split("\n"):
-        cur = ""
-        for word in para.split():
-            test = f"{cur} {word}".strip()
-            if draw.textlength(test, font=fnt) > width and cur:
-                lines.append(cur)
-                cur = word
-            else:
-                cur = test
-        lines.append(cur)
-    return lines
-
-
-def popup_image(page):
-    data = page.screenshot(type="jpeg", quality=90, scale="css", full_page=True)
-    img = Image.open(io.BytesIO(data)).convert("RGB")
-    return img.crop((0, 0, min(POPUP_W, img.width), img.height))
+BG = "#000000"
 
 
 class Recorder:
@@ -63,108 +47,158 @@ class Recorder:
                                              pix_fmt_out="yuv420p", macro_block_size=8)
         self.w.send(None)
         self.frames = 0
-        self.left = self.right = None        # pages filmées
+        self.left = self.right = None
         self.imgs = {"left": None, "right": None}
-        self.chapter, self.text, self.ring = "", "", None
-        self.chapters = []
-
-    def cap(self, chapter, text):
-        if chapter != self.chapter:
-            self.chapters.append((self.frames / FPS, chapter))
-        self.chapter, self.text = chapter, text
+        self.place = {}                # panneau -> (x, y, échelle css vers image finale)
+        self.cursor = (W // 2, H // 2)
 
     def shoot(self):
-        for key, page in (("left", self.left), ("right", self.right)):
-            if page is not None:
-                if key == "right":      # la fenêtre est plus large que le popup : on recadre
-                    self.imgs[key] = popup_image(page)
-                else:
-                    data = page.screenshot(type="jpeg", quality=75, scale="css")
-                    self.imgs[key] = Image.open(io.BytesIO(data)).convert("RGB")
+        if self.left is not None:
+            self.imgs["left"] = Image.open(io.BytesIO(self.left.screenshot(type="jpeg", quality=80))).convert("RGB")
+        if self.right is not None:
+            img = Image.open(io.BytesIO(self.right.screenshot(type="jpeg", quality=90, full_page=True))).convert("RGB")
+            dpr = self.right.evaluate("() => devicePixelRatio")
+            self.imgs["right"] = img.crop((0, 0, min(int(POPUP_W * dpr), img.width), img.height))
+            self.right_dpr = dpr
 
     def compose(self):
         img = Image.new("RGB", (W, H), BG)
-        d = ImageDraw.Draw(img)
-        area_h = 930
+        space = W
         if self.right is not None and self.imgs["right"] is not None:
-            rw = 440
             r = self.imgs["right"]
-            k = min(rw / r.width, area_h / r.height)
+            k = min(470 / r.width, H / r.height)
             rs = r.resize((int(r.width * k), int(r.height * k)), Image.LANCZOS)
-            rx = W - 20 - rs.width
-            img.paste(rs, (rx, 16))
-            if self.ring:
-                x, y, bw, bh = self.ring
-                d.rounded_rectangle([rx + x * k - 5, 16 + y * k - 5, rx + (x + bw) * k + 5, 16 + (y + bh) * k + 5],
-                                    radius=12, outline="#ffd54a", width=4)
-            lw = W - rw - 60
-        else:
-            lw = W - 40
+            x = W - rs.width
+            img.paste(rs, (x, 0))
+            self.place["right"] = (x, 0, k * self.right_dpr)
+            space = x - 8
         if self.left is not None and self.imgs["left"] is not None:
             l = self.imgs["left"]
-            k = min(lw / l.width, area_h / l.height)
-            img.paste(l.resize((int(l.width * k), int(l.height * k)), Image.LANCZOS), (20, 16))
-        self._caption(img, d)
+            k = min(space / l.width, H / l.height)
+            ls = l.resize((int(l.width * k), int(l.height * k)), Image.LANCZOS)
+            x, y = (space - ls.width) // 2, (H - ls.height) // 2
+            img.paste(ls, (x, y))
+            css_w = self.left.evaluate("() => innerWidth")
+            self.place["left"] = (x, y, ls.width / css_w)
+        self._draw_cursor(img)
         return img
 
-    def _caption(self, img, d):
-        d.rectangle([0, 950, W, H], fill="#1d1b2d")
-        d.text((36, 964), self.chapter.upper(), font=font(22), fill=ACCENT)
-        y = 996
-        for line in wrap(d, self.text, font(31), W - 72)[:2]:
-            d.text((36, y), line, font=font(31), fill=INK)
-            y += 38
+    def _draw_cursor(self, img):
+        x, y = self.cursor
+        pts = [(x, y), (x, y + 26), (x + 7, y + 20), (x + 12, y + 31), (x + 17, y + 29), (x + 12, y + 18), (x + 21, y + 18)]
+        ImageDraw.Draw(img).polygon(pts, fill="white", outline="black")
 
-    def emit(self, img, seconds=None, count=None):
-        n = count if count is not None else max(1, int(seconds * FPS))
+    def emit(self, img, count):
         raw = img.tobytes()
-        for _ in range(n):
+        for _ in range(count):
             self.w.send(raw)
-        self.frames += n
+        self.frames += count
 
     def live(self, seconds):
-        """Filme en temps réel."""
-        start, target = time.time(), self.frames
+        start, base = time.time(), self.frames
         while time.time() - start < seconds:
             self.shoot()
             due = int((time.time() - start) * FPS)
-            have = self.frames - target
-            self.emit(self.compose(), count=max(1, due - have))
+            self.emit(self.compose(), max(1, due - (self.frames - base)))
 
     def still(self, seconds):
-        """Tient l'image à l'écran pour laisser le temps de lire."""
         self.shoot()
-        self.emit(self.compose(), seconds * HOLD)
+        self.emit(self.compose(), max(1, int(seconds * FPS)))
 
-    def card(self, title, body, seconds, picture=None, mono=None):
-        img = Image.new("RGB", (W, H), BG)
-        d = ImageDraw.Draw(img)
-        d.text((90, 70), title, font=font(62), fill=INK)
-        d.rectangle([90, 152, 300, 157], fill=ACCENT)
-        y = 190
-        for line in wrap(d, body, font(38), W - 180):
-            d.text((90, y), line, font=font(38), fill=INK)
-            y += 54
-        if mono:
-            y += 12
-            box_h = min(H - y - 60, 34 * len(mono) + 40)
-            d.rounded_rectangle([90, y, W - 90, y + box_h], radius=14, fill="#000000")
-            for i, line in enumerate(mono):
-                d.text((120, y + 20 + 34 * i), line[:96], font=font(25, MONO), fill="#9be8b4")
-        if picture:
-            p = Image.open(picture).convert("RGB")
-            top = y + 16
-            k = min((W - 180) / p.width, (H - top - 50) / p.height)
-            p = p.resize((int(p.width * k), int(p.height * k)), Image.LANCZOS)
-            img.paste(p, ((W - p.width) // 2, top))
-        self.emit(img, seconds * HOLD)
+    def glide(self, target, seconds=0.5):
+        x0, y0 = self.cursor
+        steps = max(1, int(seconds * FPS))
+        for i in range(1, steps + 1):
+            t = i / steps
+            t = t * t * (3 - 2 * t)
+            self.cursor = (int(x0 + (target[0] - x0) * t), int(y0 + (target[1] - y0) * t))
+            self.emit(self.compose(), 1)
+
+    def point(self, panel, locator):
+        box = locator.bounding_box()
+        ox, oy, k = self.place[panel]
+        self.glide((int(ox + (box["x"] + box["width"] / 2) * k), int(oy + (box["y"] + box["height"] / 2) * k)))
+
+    def click(self, panel, locator):
+        self.shoot()
+        self.compose()
+        self.point(panel, locator)
+        self.emit(self.compose(), 4)
+        locator.click()
 
     def close(self):
         self.w.close()
 
 
+def install(rec):
+    with sync_playwright() as p:
+        ctx = p.chromium.launch_persistent_context(
+            tempfile.mkdtemp(), channel="chromium", headless=False,
+            args=["--enable-unsafe-extension-debugging", "--lang=fr"],
+            ignore_default_args=["--disable-extensions"], viewport={"width": 1200, "height": 760})
+        page = ctx.pages[0]
+        page.goto("chrome://extensions")
+        page.wait_for_timeout(1200)
+        rec.left = page
+        rec.still(5)
+        rec.click("left", page.locator("#devMode"))
+        rec.still(5)
+        rec.shoot(); rec.compose()
+        rec.point("left", page.locator("#loadUnpacked"))
+        rec.still(5)
+        ctx.browser.new_browser_cdp_session().send("Extensions.loadUnpacked", {"path": EXT})
+        page.wait_for_timeout(1000)
+        rec.still(9)
+        rec.left = None
+        ctx.close()
+
+
+def launch_browser():
+    subprocess.run(["pkill", "-f", "commentometre-navigateur"])
+    time.sleep(2)
+    subprocess.Popen([str(BIN), f"--user-data-dir={PROFILE}", f"--load-extension={EXT}", "--remote-debugging-port=9333",
+                      "--no-first-run", "--no-default-browser-check", "--lang=fr",
+                      "--window-position=0,30", "--window-size=1000,780", f"{API}/health"],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for _ in range(25):
+        try:
+            import urllib.request
+            urllib.request.urlopen("http://127.0.0.1:9333/json/version", timeout=1)
+            break
+        except OSError:
+            time.sleep(1)
+    time.sleep(3)
+
+
+def swagger(rec, ctx):
+    page = next(pg for pg in ctx.pages if "/health" in pg.url)
+    page.bring_to_front()
+    rec.left = page
+    rec.still(7)
+    page.goto(f"{API}/docs", wait_until="networkidle")
+    page.wait_for_timeout(800)
+    rec.still(6)
+    rec.click("left", page.locator(".opblock-post .opblock-summary-control"))
+    page.wait_for_timeout(600)
+    rec.still(4)
+    rec.click("left", page.locator(".try-out__btn"))
+    page.wait_for_timeout(400)
+    box = page.locator(".body-param__text")
+    box.fill(json.dumps({"comments": ["I love this video, great work!", "This is the worst tutorial ever", "Posted on Monday"]}, indent=2))
+    rec.still(6)
+    rec.click("left", page.locator(".execute"))
+    page.locator(".live-responses-table").wait_for(timeout=15000)
+    page.locator(".live-responses-table").scroll_into_view_if_needed()
+    page.wait_for_timeout(500)
+    rec.still(12)
+    page.mouse.wheel(0, 350)
+    page.wait_for_timeout(400)
+    rec.still(9)
+    rec.left = None
+    return page
+
+
 def open_video(yt, url):
-    """Ouvre une vidéo, attend son titre réel et met la lecture en pause."""
     yt.goto(url, wait_until="domcontentloaded")
     end = time.time() + 25
     while time.time() < end and (yt.title().strip() in ("", "YouTube") or not yt.query_selector("ytd-comments#comments")):
@@ -179,53 +213,30 @@ def read_stats(popup):
             ("videoTitle", "total", "score", "moodLabel", "posPct", "neuPct", "negPct", "conf", "latency")}
 
 
-def main():
-    popup_w, top = 400, 30
-    results = {"videos": []}
-    rec = Recorder()
-    rec.card("Commentomètre", "Analyse de sentiment des commentaires YouTube\nTP3 Cloud Computing, ENSAM Rabat, filière INDIA\nZaid Hsain, 2026-2027", 7)
-    rec.card("Le problème", "Une vidéo reçoit des centaines de commentaires. Les lire tous prend du temps, et l'impression qu'on en garde est subjective. "
-             "L'objectif : une extension Chrome qui les lit, les envoie à une API de machine learning et affiche un bilan chiffré.", 13)
-    rec.card("Architecture", "L'extension lit la page, l'API FastAPI applique le modèle TF-IDF + régression logistique.", 16, picture=ASSETS / "architecture.png")
-    rec.card("Déroulement d'une analyse", "Du clic sur le bouton jusqu'à l'affichage du bilan.", 14, picture=ASSETS / "sequence.png")
+def save_popup(rec, popup, name):
+    rec.shoot()
+    rec.imgs["right"].save(SHOTS / name)
 
+
+def main():
+    rec = Recorder()
+    results = {"videos": []}
+    install(rec)
+    launch_browser()
     with sync_playwright() as p:
         browser = p.chromium.connect_over_cdp("http://127.0.0.1:9333")
         ctx = browser.contexts[0]
-        yt = next(pg for pg in ctx.pages if "youtube.com" in pg.url)
+        yt = swagger(rec, ctx)
 
-        # --- API
-        tech = ctx.new_page()
-        rec.left = tech
-        tech.goto(f"{API}/health")
-        rec.cap("L'API", "GET /health : l'API répond, le modèle est chargé, sa version est indiquée.")
-        rec.still(9)
-        tech.goto(f"{API}/docs", wait_until="networkidle")
-        tech.wait_for_timeout(800)
-        rec.cap("L'API", "FastAPI génère cette documentation Swagger à partir des schémas Pydantic.")
-        rec.still(10)
-
-        # --- Extension installée
-        tech.goto(f"chrome://extensions/?id={EXT_ID}")
-        tech.wait_for_timeout(1200)
-        rec.cap("Installation", "chrome://extensions, mode développeur, puis « Charger l'extension non empaquetée » et le dossier chrome-extension. Elle est ici déjà installée.")
-        rec.still(14)
-        rec.left = None
-        tech.close()
-
-        # --- Analyse sur une vraie vidéo
-        yt.bring_to_front()
-        subprocess.run(["open", "-a", APP], timeout=10)
-        print("Vidéo 1 :", open_video(yt, VIDEOS[0]), flush=True)
-
+        subprocess.run(["open", "-a", str(APP)], timeout=10)
+        print("Vidéo 1 :", open_video(yt, VIDEOS["rick"]), flush=True)
         helper = ctx.new_page()
         helper.goto(f"chrome-extension://{EXT_ID}/popup.html")
         sw, sh = helper.evaluate("() => [screen.availWidth, screen.availHeight]")
-        print("Écran :", sw, sh, flush=True)
         tab_id = helper.evaluate("async () => (await chrome.tabs.query({url: 'https://www.youtube.com/watch*'}))[0].id")
         with ctx.expect_page() as newp:
             helper.evaluate(f"""() => chrome.windows.create({{url: 'popup.html?tabId={tab_id}', type: 'popup',
-                width: {popup_w}, height: {min(sh - 40, 860)}, left: {sw - popup_w - 6}, top: {top}}})""")
+                width: 400, height: {min(sh - 40, 860)}, left: {sw - 406}, top: 30}})""")
         popup = newp.value
         helper.close()
         yt.bring_to_front()
@@ -234,109 +245,117 @@ def main():
         popup.reload()
         popup.wait_for_timeout(600)
         rec.left, rec.right = yt, popup
+        rec.still(6)
 
-        def click(selector, hold=0.7):
-            box = popup.locator(selector).bounding_box()
-            rec.ring = (box["x"], box["y"], box["width"], box["height"])
-            rec.still(hold)
-            popup.click(selector)
-            rec.ring = None
+        L = popup.locator
 
-        def analyze(label):
-            click("#analyzeBtn")
-            end = time.time() + 100
+        def analyze(label, required=True):
+            rec.click("right", L("#analyzeBtn"))
+            end = time.time() + 120
             while time.time() < end and not (popup.is_visible("#results") or popup.is_visible("#error")):
                 rec.live(0.5)
             if popup.is_visible("#error"):
                 msg = popup.inner_text("#error")
                 print(label, "ERREUR :", msg, flush=True)
-                return None
+                if required:
+                    raise SystemExit(f"{label} sans résultat : enregistrement abandonné")
+                return msg
             stats = read_stats(popup)
             print(label, stats, flush=True)
+            results["videos"].append(stats)
             return stats
 
-        rec.cap("Démonstration", "Une vraie vidéo YouTube à gauche, le popup de l'extension à droite.")
-        rec.still(7)
-        click("#settingsBtn")
-        rec.cap("Réglages", "Adresse de l'API, nombre de commentaires à lire, option pour inclure les réponses.")
-        rec.still(7)
-        click("#testApi")
-        popup.wait_for_timeout(500)
-        rec.cap("Réglages", f"Test de connexion : {popup.inner_text('#apiStatus')}")
-        rec.still(6)
-        click("#settingsBtn")
+        def scroll_list(seconds=12):
+            steps = int(seconds * 3)
+            for _ in range(steps):
+                popup.evaluate("() => document.querySelector('#commentList').scrollBy(0, 45)")
+                rec.live(0.3)
+            popup.evaluate("() => document.querySelector('#commentList').scrollTo(0, 0)")
 
-        rec.cap("Analyse", "L'extension fait défiler la page pour que YouTube charge les commentaires, puis les envoie à l'API.")
-        stats = analyze("Vidéo 1")
-        if stats is None:
-            raise SystemExit("Vidéo 1 sans résultat : enregistrement abandonné")
-        else:
-            results["videos"].append(stats)
-            popup_image(popup).save(ASSETS / "real_1.png")
-            rec.cap("Résultat", f"{stats['total']} commentaires analysés. {stats['moodLabel']}, score {stats['score']}.")
-            rec.still(11)
-            rec.cap("Résultat", f"Temps de réponse de l'API : {stats['latency']} ms. Confiance moyenne : {stats['conf']}.")
-            rec.still(8)
-            for sel, txt in ((".filter[data-filter='1']", "Filtre : uniquement les commentaires positifs."),
-                             (".filter[data-filter='0']", "Filtre : les commentaires neutres, sans mot d'opinion reconnu par le modèle."),
-                             (".filter[data-filter='-1']", "Filtre : les négatifs, avec la confiance du modèle pour chacun."),
-                             (".filter[data-filter='all']", "Retour à la liste complète.")):
-                click(sel)
-                rec.cap("Filtres", txt)
-                rec.still(7)
-            popup.fill("#search", "rick")
-            rec.cap("Recherche", "La recherche filtre par mot ou par pseudo.")
-            rec.still(7)
-            popup.fill("#search", "")
-            click("#themeBtn")
-            rec.cap("Mode sombre", "Le thème sombre, mémorisé d'une session à l'autre.")
-            rec.still(8)
-            popup_image(popup).save(ASSETS / "real_dark.png")
-            click("#themeBtn")
-            click("#copyBtn")
-            popup.wait_for_timeout(250)
-            copied = popup.inner_text("#copyBtn")
-            print("Bouton copier :", copied, flush=True)
-            rec.cap("Export", "Le bouton Copier place le résumé et la liste dans le presse-papiers." if "Copié" in copied else "Bouton Copier.")
-            rec.still(6)
-
-        # --- Deuxième vidéo
-        print("Vidéo 2 :", open_video(yt, VIDEOS[1]), flush=True)
-        rec.cap("Deuxième vidéo", "Même analyse sur une autre vidéo très commentée.")
+        # Réglages et test de l'API
+        rec.click("right", L("#settingsBtn"))
         rec.still(5)
-        stats = analyze("Vidéo 2")
-        if stats is None:
-            raise SystemExit("Vidéo 2 sans résultat : enregistrement abandonné")
-        else:
-            results["videos"].append(stats)
-            popup_image(popup).save(ASSETS / "real_2.png")
-            rec.cap("Deuxième vidéo", f"{stats['total']} commentaires. {stats['moodLabel']}, score {stats['score']}.")
-            rec.still(11)
+        rec.click("right", L("#testApi"))
+        popup.wait_for_timeout(500)
+        rec.still(6)
+        rec.click("right", L("#settingsBtn"))
+        rec.still(2)
 
-        # --- Erreur réseau
-        click("#settingsBtn")
-        popup.fill("#apiUrl", "http://127.0.0.1:9")
-        click("#saveSettings")
-        click("#settingsBtn")
-        rec.cap("Gestion d'erreur", "API volontairement injoignable : l'extension l'explique au lieu de rester bloquée.")
-        analyze("Erreur")
-        if "joindre l'API" not in popup.inner_text("#error"):
-            raise SystemExit("L'erreur affichée n'est pas celle du sous-titre : enregistrement abandonné")
-        rec.still(8)
+        # Vidéo 1 : toutes les fonctions
+        analyze("Vidéo 1")
+        rec.still(12)
+        save_popup(rec, popup, "11_rick_astley_clair.png")
+        scroll_list()
+        for flt in ("1", "0", "-1"):
+            rec.click("right", L(f".filter[data-filter='{flt}']"))
+            rec.still(4)
+            scroll_list(6)
+        rec.click("right", L(".filter[data-filter='all']"))
+        rec.still(3)
+        rec.click("right", L("#search"))
+        L("#search").press_sequentially("rick", delay=180)
+        rec.still(7)
+        L("#search").fill("")
+        rec.click("right", L("#themeBtn"))
+        rec.still(6)
+        save_popup(rec, popup, "12_rick_astley_sombre.png")
+        scroll_list(6)
+        rec.click("right", L("#themeBtn"))
+        rec.still(3)
+        rec.click("right", L("#copyBtn"))
+        popup.wait_for_timeout(200)
+        print("Copier :", popup.inner_text("#copyBtn"), flush=True)
+        rec.still(4)
+        rec.click("right", L("#csvBtn"))
+        popup.wait_for_timeout(200)
+        print("CSV :", popup.inner_text("#csvBtn"), flush=True)
+        rec.still(4)
+
+        # Vidéo 2 : 200 commentaires, réponses incluses
+        print("Vidéo 2 :", open_video(yt, VIDEOS["gangnam"]), flush=True)
+        rec.still(5)
+        rec.click("right", L("#settingsBtn"))
+        L("#maxComments").select_option("200")
+        rec.still(3)
+        rec.click("right", L("#includeReplies"))
+        rec.still(3)
+        rec.click("right", L("#saveSettings"))
+        rec.still(3)
+        rec.click("right", L("#settingsBtn"))
+        analyze("Vidéo 2")
+        rec.still(12)
+        save_popup(rec, popup, "13_gangnam_style.png")
+        scroll_list(10)
+        rec.click("right", L(".filter[data-filter='-1']"))
+        rec.still(5)
+        rec.click("right", L(".filter[data-filter='all']"))
+        rec.still(2)
+
+        # Vidéo 3 : réglages par défaut
+        rec.click("right", L("#settingsBtn"))
+        L("#maxComments").select_option("100")
+        rec.click("right", L("#includeReplies"))
+        rec.click("right", L("#saveSettings"))
+        rec.click("right", L("#settingsBtn"))
+        print("Vidéo 3 :", open_video(yt, VIDEOS["shape"]), flush=True)
+        rec.still(5)
+        analyze("Vidéo 3")
+        rec.still(12)
+        scroll_list(8)
+
+        # API injoignable
+        rec.click("right", L("#settingsBtn"))
+        L("#apiUrl").fill("http://127.0.0.1:9")
+        rec.still(3)
+        rec.click("right", L("#saveSettings"))
+        rec.click("right", L("#settingsBtn"))
+        msg = analyze("Erreur", required=False)
+        if not isinstance(msg, str) or "joindre l'API" not in msg:
+            raise SystemExit("L'erreur attendue n'est pas apparue : enregistrement abandonné")
+        rec.still(9)
         popup.evaluate(f"chrome.storage.local.set({{apiUrl: '{API}'}})")
-        rec.left = rec.right = None
 
-    tests = (ASSETS / "pytest_out.txt").read_text().strip()
-    integ = (ASSETS / "integration_out.txt").read_text().splitlines()
-    rec.chapter = ""
-    rec.card("Tests", f"pytest : {tests}\nTest d'intégration contre l'API en local :", 15, mono=integ)
-    rec.card("Performances du modèle", "Accuracy 89,45 % sur 7 290 commentaires de test. F1 : négatif 0,81, neutre 0,94, positif 0,90. 0,7 ms pour un lot de 50.", 14,
-             picture=ROOT / "reports/figures/confusion_matrix.png")
-    rec.card("Une limite importante", "Le signe de la polarité TextBlob reproduit 100 % des 37 149 étiquettes du jeu de données. Le modèle apprend donc à imiter TextBlob, pas un jugement humain. "
-             "Il est aussi entraîné sur de l'anglais : sur une vidéo commentée en arabe et en darija, 93 % des commentaires sont sortis en neutre.", 16)
-    rec.card("État du projet", "Modèle, API, extension et tests fonctionnent en local. Le Dockerfile est prêt, mais l'image n'a pas encore été construite et l'API n'est pas encore en ligne sur Hugging Face.", 12)
     results["duration_s"] = round(rec.frames / FPS, 1)
-    results["chapters"] = [[round(t, 1), c] for t, c in rec.chapters]
     rec.close()
     RESULTS.write_text(json.dumps(results, ensure_ascii=False, indent=2))
     print("Durée :", results["duration_s"], "s", flush=True)

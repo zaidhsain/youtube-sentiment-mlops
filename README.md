@@ -93,4 +93,4 @@ Le Dockerfile permet aussi de lancer l'API en conteneur : `docker build -t comme
 - `tests/e2e/run_e2e.py` : pilote l'extension dans Chromium avec Playwright, sur une page qui reproduit la structure HTML des commentaires YouTube, pour que le test reste reproductible.
 - `tests/e2e/record_demo.py` : enregistre la vidéo de démonstration sur de vraies vidéos YouTube.
 
-Le rapport complet est dans [docs/Rapport_Technique.pdf](docs/Rapport_Technique.pdf), et la vidéo de démonstration dans [docs/demo/Video_Demo_1min.mp4](docs/demo/Video_Demo_1min.mp4).
+Le rapport complet est dans [docs/Rapport_Technique.pdf](docs/Rapport_Technique.pdf), et la vidéo de démonstration dans [docs/demo/Video_Demonstration.mp4](docs/demo/Video_Demonstration.mp4).

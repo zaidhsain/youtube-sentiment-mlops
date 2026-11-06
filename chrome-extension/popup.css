@@ -137,4 +137,4 @@ body.dark .tag.s0 { color: var(--neu); }
 .reply { font-style: italic; }
 .empty { text-align: center; color: var(--muted); box-shadow: none !important; background: transparent !important; }
 
-footer { text-align: center; font-size: 10.5px; color: var(--muted); padding: 6px 0 12px; }
+main { padding-bottom: 12px; }
