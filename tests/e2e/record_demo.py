@@ -30,7 +30,6 @@ EXT = str(ROOT / "chrome-extension")
 EXT_ID = "cmipaanhhmabdagfjolahadjmdmddlee"
 API = os.environ.get("API_URL", "http://127.0.0.1:8001")
 APP = Path.home() / "Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app"
-BIN = APP / "Contents/MacOS/Google Chrome for Testing"
 PROFILE = Path.home() / ".commentometre-navigateur"
 VIDEOS = {
     "rick": "https://www.youtube.com/watch?v=m85MeUJCYac",
@@ -154,23 +153,6 @@ def install(rec):
         ctx.close()
 
 
-def launch_browser():
-    subprocess.run(["pkill", "-f", "commentometre-navigateur"])
-    time.sleep(2)
-    subprocess.Popen([str(BIN), f"--user-data-dir={PROFILE}", f"--load-extension={EXT}", "--remote-debugging-port=9333",
-                      "--no-first-run", "--no-default-browser-check", "--lang=fr",
-                      "--window-position=0,30", "--window-size=1000,780", f"{API}/health"],
-                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(25):
-        try:
-            import urllib.request
-            urllib.request.urlopen("http://127.0.0.1:9333/json/version", timeout=1)
-            break
-        except OSError:
-            time.sleep(1)
-    time.sleep(3)
-
-
 def swagger(rec, ctx):
     page = ctx.pages[0]
     page.bring_to_front()
@@ -229,10 +211,20 @@ def main():
     rec = Recorder()
     results = {"videos": []}
     install(rec)
-    launch_browser()
     with sync_playwright() as p:
-        browser = p.chromium.connect_over_cdp("http://127.0.0.1:9333")
-        ctx = browser.contexts[0]
+        # Profil où l'utilisateur s'est connecté lui-même ; l'extension y est chargée pour la session.
+        ctx = p.chromium.launch_persistent_context(
+            str(PROFILE), channel="chromium", headless=False, viewport=None,
+            args=["--enable-unsafe-extension-debugging", "--lang=fr", "--window-position=0,30", "--window-size=1000,780"],
+            ignore_default_args=["--disable-extensions", "--use-mock-keychain", "--password-store=basic", "--enable-automation"])
+        ctx.browser.new_browser_cdp_session().send("Extensions.loadUnpacked", {"path": EXT})
+        setup = ctx.new_page()
+        setup.goto("chrome://extensions/")
+        setup.wait_for_timeout(800)
+        setup.evaluate(f"""() => new Promise(r => chrome.developerPrivate.updateExtensionConfiguration(
+            {{extensionId: '{EXT_ID}', hostAccess: 'ON_ALL_SITES'}}, r))""")
+        setup.close()
+        ctx.pages[0].goto(f"{API}/health")
         yt = swagger(rec, ctx)
 
         subprocess.run(["open", "-a", str(APP)], timeout=10)

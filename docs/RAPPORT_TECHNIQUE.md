@@ -29,7 +29,7 @@ Tableau : État des livrables demandés
 | API | En ligne sur GitHub Codespaces, port 7860 public |
 | Extension Chrome | Terminée, essayée sur de vraies vidéos YouTube ; guide utilisateur fourni |
 | README et rapport | Terminés |
-| Vidéo de démonstration | Terminée (5 min 03, sans voix) |
+| Vidéo de démonstration | Terminée (5 min, sans voix) |
 
 L'API répond à l'adresse `https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev` tant que le Codespace tourne. Docker n'étant pas installé sur ma machine, l'image est construite et vérifiée par GitHub Actions (section 3.6).
 
@@ -181,9 +181,9 @@ Tableau : Analyses de vraies vidéos YouTube (plafond de 100 commentaires, 200 a
 
 | Vidéo | Commentaires | Positifs | Neutres | Négatifs | Score |
 |---|---|---|---|---|---|
-| *Daily English Conversations About Emergencies & Safety* | 96 | 51,0 % | 43,8 % | 5,2 % | +0,46 |
-| PSY, *Gangnam Style* | 197 | 23,4 % | 70,6 % | 6,1 % | +0,17 |
-| Rick Astley, *Never Gonna Give You Up* | 99 | 30,3 % | 61,6 % | 8,1 % | +0,22 |
+| *Daily English Conversations About Emergencies & Safety* | 96 | 55,2 % | 39,6 % | 5,2 % | +0,50 |
+| PSY, *Gangnam Style* | 195 | 26,2 % | 66,7 % | 7,2 % | +0,19 |
+| Rick Astley, *Never Gonna Give You Up* | 98 | 28,6 % | 58,2 % | 13,3 % | +0,15 |
 | Documentaire en arabe et en darija | 100 | 6,0 % | 93,0 % | 1,0 % | +0,05 |
 
 | Résultat, thème clair | Thème sombre |

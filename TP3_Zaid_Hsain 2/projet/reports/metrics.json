@@ -1,0 +1,21 @@
+{
+  "accuracy": 0.8945,
+  "f1_macro": 0.8839,
+  "f1_per_class": {
+    "Négatif": 0.8138,
+    "Neutre": 0.9358,
+    "Positif": 0.9022
+  },
+  "latency_ms_batch50": 0.76,
+  "best_params": {
+    "clf__C": "20",
+    "tfidf__max_features": "30000",
+    "tfidf__ngram_range": "(1, 1)"
+  },
+  "cv_f1_macro": 0.8701,
+  "criteria": {
+    "accuracy>=0.80": true,
+    "f1_each_class>0.75": true,
+    "latency<100ms": true
+  }
+}

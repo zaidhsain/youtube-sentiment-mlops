@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construire l'image
+        run: docker build -t commentometre .
+      - name: Lancer le conteneur
+        run: docker run -d --name api -p 7860:7860 commentometre
+      - name: Attendre l'API
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:7860/health && exit 0
+            sleep 2
+          done
+          docker logs api
+          exit 1
+      - name: Tester une prédiction
+        run: |
+          curl -sf -X POST http://127.0.0.1:7860/predict_batch \
+            -H "Content-Type: application/json" \
+            -d '{"comments": ["I love this video", "worst tutorial ever", "posted on Monday"]}' | tee out.json
+          python3 -c "import json; d = json.load(open('out.json')); assert [p['sentiment'] for p in d['predictions']] == [1, -1, 0], d"
+      - name: Taille de l'image
+        run: docker images commentometre --format '{{.Repository}} {{.Size}}'
