@@ -1,7 +1,7 @@
 """Test E2E : Chromium + extension non empaquetée + page YouTube simulée + API réelle.
 
-YouTube ne charge pas les commentaires dans un navigateur automatisé : on sert donc à
-l'URL https://www.youtube.com/watch?v=demo une page qui reproduit la structure DOM des
+Pour un test reproductible, indépendant du contenu de YouTube, on sert à l'URL
+https://www.youtube.com/watch?v=demo une page qui reproduit la structure DOM des
 commentaires (voir youtube_fixture.py). Tout autre trafic vers YouTube est bloqué.
 
 Prérequis : pip install playwright && playwright install chromium

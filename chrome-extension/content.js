@@ -33,14 +33,25 @@
     return out;
   }
 
+  // YouTube ne demande les commentaires qu'à l'approche de leur section, et la réponse
+  // peut tarder : sans cette attente, on conclurait à tort qu'il n'y en a aucun.
+  async function waitForFirstComments(timeoutMs = 12000) {
+    const end = Date.now() + timeoutMs;
+    while (Date.now() < end) {
+      if (document.querySelector(THREAD_SEL)) return true;
+      document.querySelector("ytd-comments#comments")?.scrollIntoView();
+      await sleep(400);
+    }
+    return false;
+  }
+
   async function extract({ max = 100, includeReplies = false, autoScroll = true } = {}) {
     if (!location.pathname.startsWith("/watch")) {
       throw new Error("Ouvrez une vidéo YouTube (URL /watch).");
     }
     const startY = window.scrollY;
     if (autoScroll) {
-      // S'assurer que la section commentaires est rendue
-      document.querySelector("ytd-comments#comments")?.scrollIntoView();
+      await waitForFirstComments();
       let last = -1, stale = 0;
       while (stale < 4) {
         const n = document.querySelectorAll(THREAD_SEL).length;

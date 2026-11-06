@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 372" font-family="Georgia, 'Times New Roman', serif" fill="#1f1b16">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1f1b16"/></marker></defs>
+<style>.h{fill:#fbf8f3;stroke:#7b1e2b}.n{font-size:13px;text-anchor:middle}.v{stroke:#b9b0a2;stroke-dasharray:4 4}.l{stroke:#1f1b16;stroke-width:1.2;marker-end:url(#a)}.r{stroke:#1f1b16;stroke-width:1.2;stroke-dasharray:5 4;marker-end:url(#a)}.m{font-size:12px;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round}</style>
+<g><rect class="h" x="20" y="10" width="110" height="32" rx="4"/><text class="n" x="75" y="31">Utilisateur</text><rect class="h" x="200" y="10" width="110" height="32" rx="4"/><text class="n" x="255" y="31">Popup</text><rect class="h" x="390" y="10" width="110" height="32" rx="4"/><text class="n" x="445" y="31">content.js</text><rect class="h" x="580" y="10" width="110" height="32" rx="4"/><text class="n" x="635" y="31">YouTube</text><rect class="h" x="780" y="10" width="110" height="32" rx="4"/><text class="n" x="835" y="31">API</text></g>
+<path class="v" d="M75 42V362M255 42V362M445 42V362M635 42V362M835 42V362"/>
+<path class="l" d="M75 76H251"/><text class="m" x="84" y="68">1. « Analyser cette vidéo »</text>
+<path class="l" d="M255 112H441"/><text class="m" x="264" y="104">2. EXTRACT_COMMENTS (max, réponses)</text>
+<path class="l" d="M445 148H631"/><text class="m" x="454" y="140">3. défilement jusqu'au plafond</text>
+<path class="r" d="M635 182H449"/><text class="m" x="454" y="174">4. nouveaux commentaires dans le DOM</text>
+<path class="r" d="M445 218H259"/><text class="m" x="264" y="210">5. textes, auteurs, titre</text>
+<path class="l" d="M255 254H831"/><text class="m" x="264" y="246">6. POST /predict_batch, un appel par lot de 100</text>
+<path class="r" d="M835 290H259"/><text class="m" x="264" y="282">7. sentiment, confiance, probabilités, statistiques du lot</text>
+<path class="r" d="M255 334H79"/><text class="m" x="84" y="326">8. humeur et bilan global</text>
+<rect x="745" y="298" width="170" height="36" fill="#fff" stroke="#b9b0a2"/><text class="m" x="830" y="321" text-anchor="middle">6 et 7 répétés par lot</text>
+</svg>

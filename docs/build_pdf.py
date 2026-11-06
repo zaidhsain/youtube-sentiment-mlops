@@ -17,8 +17,8 @@ from playwright.sync_api import sync_playwright
 DOCS = Path(__file__).resolve().parent
 SRC = DOCS / "RAPPORT_TECHNIQUE.md"
 OUT = DOCS / "Rapport_Technique.pdf"
-GITHUB = sys.argv[1] if len(sys.argv) > 1 else "à compléter"
-API = sys.argv[2] if len(sys.argv) > 2 else "à compléter"
+GITHUB = sys.argv[1] if len(sys.argv) > 1 else "dépôt à publier"
+API = sys.argv[2] if len(sys.argv) > 2 else "déploiement à finaliser"
 
 AUTHOR = "Zaid Hsain"
 SUPERVISOR = "Pr. Maria Zemzami"
@@ -49,10 +49,11 @@ td code { font-size: 8.4pt; }
 .caption { text-align: center; font-size: 9.5pt; margin: 1em 0 .35em; break-after: avoid; }
 .caption b, figcaption b { font-variant: small-caps; letter-spacing: .3px; color: var(--accent); }
 figure { margin: .6em 0 .8em; text-align: center; break-inside: avoid; }
-figure img { max-width: 76%; max-height: 50mm; }
+figure img { max-width: 76%; max-height: 62mm; }
+figure img[src$=".svg"] { max-width: 100%; max-height: 84mm; width: 100%; }
 figcaption { font-size: 9.5pt; font-style: italic; margin-top: .4em; }
 td img { width: 100%; border: .5pt solid var(--rule); }
-table.shots { width: 60%; margin-left: auto; margin-right: auto; }
+table.shots { width: 62%; margin-left: auto; margin-right: auto; }
 table.shots td { width: 50%; text-align: center; border: 0 !important; }
 table.shots thead th { border: 0; text-align: center; font-weight: normal; font-style: italic; font-size: 9pt; }
 
@@ -80,7 +81,7 @@ table.shots thead th { border: 0; text-align: center; font-weight: normal; font-
 
 COVER = """<section class="cover">
   <div class="inst"><div class="univ">Université Mohammed V de Rabat</div>
-    École Nationale Supérieure d'Arts et Métiers<br>Filière Intelligence Artificielle et Data (INDIA)</div>
+    École Nationale Supérieure d'Arts et Métiers de Rabat<br>Filière INDIA</div>
   <hr>
   <div class="kind">Rapport de travaux pratiques · Cloud Computing · TP3</div>
   <h1>Analyse de sentiment<br>des commentaires YouTube</h1>
@@ -90,7 +91,7 @@ COVER = """<section class="cover">
     <div><span class="lbl">Réalisé par</span><br>{author}</div>
     <div style="text-align:right"><span class="lbl">Encadré par</span><br>{supervisor}</div>
   </div>
-  <div class="links">Code source : {github}<br>API déployée : {api}</div>
+  <div class="links">Code source : {github}<br>API : {api}</div>
   <div class="year">Année universitaire 2026–2027</div>
 </section>"""
 
@@ -117,7 +118,7 @@ def number_captions(html: str) -> str:
     # python-markdown produit <img alt="…" src="…" /> ; seules les images légendées sont numérotées
     html = re.sub(r'<p><img alt="([^"]+)" src="([^"]+)" ?/?></p>', fig, html)
     # Tableau de captures d'écran : mise en forme dédiée
-    html = re.sub(r"<table>(\s*<thead>\s*<tr>\s*<th>[^<]*(?:thème|Résultats)[^<]*</th>)",
+    html = re.sub(r"<table>(\s*<thead>\s*<tr>\s*<th>[^<]*thème clair[^<]*</th>)",
                   r'<table class="shots">\1', html)
     return html
 

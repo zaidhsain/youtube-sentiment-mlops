@@ -12,11 +12,11 @@ pinned: false
 
 TP3 de Cloud Computing (ENSAM Rabat, filière INDIA, 2026-2027), réalisé par Zaid Hsain.
 
-Une extension Chrome qui lit les commentaires d'une vidéo YouTube et dit s'ils sont plutôt positifs, neutres ou négatifs. Le classement est fait par un modèle scikit-learn (TF-IDF + régression logistique) servi par une petite API FastAPI, conteneurisée et hébergée sur Hugging Face Spaces.
+Une extension Chrome qui lit les commentaires d'une vidéo YouTube et dit s'ils sont plutôt positifs, neutres ou négatifs. Le classement est fait par un modèle scikit-learn (TF-IDF + régression logistique) servi par une petite API FastAPI. Le Dockerfile est prêt pour Hugging Face Spaces ; l'API tourne pour l'instant en local.
 
 *(Le bloc YAML en haut de ce fichier n'est pas une erreur : c'est la configuration du Space Hugging Face.)*
 
-<p align="center"><img src="docs/screenshots/04_popup_results_light.png" width="300" alt="Popup de l'extension"> &nbsp; <img src="docs/screenshots/06_popup_dark_positive.png" width="300" alt="Popup en thème sombre"></p>
+<p align="center"><img src="docs/screenshots/11_rick_astley_clair.png" width="300" alt="Popup de l'extension"> &nbsp; <img src="docs/screenshots/12_rick_astley_sombre.png" width="300" alt="Popup en thème sombre"></p>
 
 ## Comment ça marche
 
@@ -52,7 +52,7 @@ uvicorn src.api.main:app --port 8000
 
 Sur les 7 290 commentaires du jeu de test, j'obtiens une accuracy de **89,45 %**. Le F1 vaut 0,81 pour les négatifs, 0,94 pour les neutres et 0,90 pour les positifs, et prédire un lot de 50 commentaires prend 0,7 ms. Les trois seuils de l'énoncé (80 % d'accuracy, F1 > 0,75 par classe, moins de 100 ms) sont donc respectés.
 
-Une mise en garde, détaillée dans le rapport : les étiquettes du jeu de données ont visiblement été générées par TextBlob, pas par des humains. Le modèle a donc surtout appris à imiter TextBlob. C'est pour ça qu'il classe « not bad at all » en négatif, ou « expected much more » en positif.
+Une mise en garde, détaillée dans le rapport : le signe de la polarité TextBlob reproduit 100 % des 37 149 étiquettes du jeu de données. Elles ne viennent donc pas d'humains, et le modèle a surtout appris à imiter TextBlob. C'est pour ça qu'il classe « not bad at all » en négatif, ou « expected much more » en positif.
 
 Le détail est dans `reports/metrics.json` et `reports/model_comparison.csv`, et les figures dans `reports/figures/`.
 
@@ -93,6 +93,7 @@ Le dernier script vérifie l'API en ligne et contrôle qu'elle donne les mêmes 
 
 - `pytest -q` : nettoyage du texte, modèle (seuils, cas limites, latence) et API (codes d'erreur, CORS, tailles de lot).
 - `tests/integration_check.py <url>` : vérifie une API réelle, locale ou en ligne.
-- `tests/e2e/run_e2e.py` : pilote l'extension dans Chromium avec Playwright. Comme YouTube ne charge pas ses commentaires dans un navigateur automatisé, le test utilise une page qui reproduit leur structure HTML. C'est aussi lui qui produit les captures de `docs/screenshots/`.
+- `tests/e2e/run_e2e.py` : pilote l'extension dans Chromium avec Playwright, sur une page qui reproduit la structure HTML des commentaires YouTube, pour que le test reste reproductible.
+- `tests/e2e/record_demo.py` : enregistre la vidéo de démonstration sur de vraies vidéos YouTube.
 
-Le rapport complet est dans [docs/Rapport_Technique.pdf](docs/Rapport_Technique.pdf).
+Le rapport complet est dans [docs/Rapport_Technique.pdf](docs/Rapport_Technique.pdf), et la vidéo de démonstration dans [docs/demo/Demo_Commentometre.mp4](docs/demo/Demo_Commentometre.mp4).
