@@ -17,7 +17,7 @@ from playwright.sync_api import sync_playwright
 DOCS = Path(__file__).resolve().parent
 SRC = DOCS / "RAPPORT_TECHNIQUE.md"
 OUT = DOCS / "Rapport_Technique.pdf"
-GITHUB = sys.argv[1] if len(sys.argv) > 1 else "https://github.com/zaidh-hs/youtube-sentiment-mlops"
+GITHUB = sys.argv[1] if len(sys.argv) > 1 else "https://github.com/zaidhsain/youtube-sentiment-mlops"
 API = sys.argv[2] if len(sys.argv) > 2 else "URL Codespaces à ouvrir pour la démonstration"
 
 AUTHOR = "Zaid Hsain"
