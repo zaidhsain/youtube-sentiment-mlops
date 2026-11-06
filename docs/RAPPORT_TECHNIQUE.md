@@ -16,7 +16,7 @@ Un créateur de contenu reçoit des centaines, parfois des milliers de commentai
 
 ### 1.2 La solution
 
-Le système comporte quatre briques : un modèle TF-IDF et régression logistique entraîné sur 36 449 commentaires, une API FastAPI qui sert ce modèle, une extension Chrome qui lit les commentaires de la vidéo ouverte et affiche le bilan, et une suite de tests. Le tout est prévu pour tourner dans un conteneur Docker sur Hugging Face Spaces.
+Le système comporte quatre briques : un modèle TF-IDF et régression logistique entraîné sur 36 449 commentaires, une API FastAPI qui sert ce modèle, une extension Chrome qui lit les commentaires de la vidéo ouverte et affiche le bilan, et une suite de tests. L'API est conteneurisée avec Docker et prévue pour être exposée depuis un GitHub Codespace, sur le port 7860 rendu public.
 
 ### 1.3 État d'avancement
 
@@ -26,10 +26,10 @@ Tableau : État des livrables demandés
 |---|---|
 | Code source, Dockerfile | Terminé, versionné avec Git ; dépôt GitHub à publier |
 | Modèle et rapport de performance | Terminé (`models/`, `reports/`) |
-| API | Fonctionne en local ; déploiement sur Hugging Face restant à faire |
-| Extension Chrome | Terminée, essayée sur de vraies vidéos YouTube |
+| API | Fonctionne en local ; configuration Codespaces prête, URL publique à ouvrir pour la démonstration |
+| Extension Chrome | Terminée, essayée sur de vraies vidéos YouTube ; guide utilisateur fourni |
 | README et rapport | Terminés |
-| Vidéo de démonstration | Terminée (6 min 28, sans voix) |
+| Vidéo de démonstration | Terminée (1 minute, sans voix) |
 
 Deux points restent donc ouverts : l'API n'est pas encore en ligne, et l'image Docker n'a pas été construite, Docker n'étant pas installé sur ma machine. J'ai vérifié à la place que l'API démarre dans un environnement réduit aux seuls fichiers et dépendances de l'image (section 5).
 
@@ -65,7 +65,7 @@ J'ai repris la structure de l'énoncé : `data/`, `models/`, `src/`, `chrome-ext
 
 `data/raw` contient le fichier téléchargé, que je ne modifie jamais, et `data/processed` ce que les scripts en tirent. Si je change une règle de nettoyage, je régénère `processed` en gardant une source intacte, et je sais d'où viennent les données d'entraînement.
 
-Le `.gitignore` exclut l'environnement virtuel (lourd et propre à ma machine), les données (régénérables), les journaux, les caches, et surtout les secrets comme un `.env` ou un token : un secret commité reste dans l'historique et doit être révoqué. Les fichiers du modèle sont versionnés, car ils pèsent environ 750 Ko et le Space en a besoin. Pour un modèle lourd, j'utiliserais Git LFS ou le Hub Hugging Face.
+Le `.gitignore` exclut l'environnement virtuel (lourd et propre à ma machine), les données (régénérables), les journaux, les caches, et surtout les secrets comme un `.env` ou un token : un secret commité reste dans l'historique et doit être révoqué. Les fichiers du modèle sont versionnés, car ils pèsent environ 750 Ko et l'API en a besoin pour démarrer. Pour un modèle lourd, j'utiliserais Git LFS ou un registre de modèles.
 
 L'environnement virtuel isole les dépendances et fige leurs versions. C'est ici indispensable, car un modèle enregistré avec joblib doit être relu avec les versions qui l'ont produit. J'utilise Python 3.10, comme l'image Docker.
 
@@ -132,7 +132,9 @@ L'image part de `python:3.10-slim`, tourne avec un utilisateur non root d'identi
 
 `requirements-prod.txt` ne garde que ce qui sert le modèle, avec des versions exactes. pandas, matplotlib ou pytest n'ont rien à faire en production : les retirer allège l'image et réduit le nombre de paquets à surveiller. Pour aller plus loin, on pourrait exporter le modèle en ONNX et se passer de scikit-learn.
 
-Pour mettre à jour le modèle, j'incrémente sa version dans `metadata.json`, exposée par `/health`. Je réentraîne, je vérifie les tests, qui contrôlent les seuils de performance, je compare au modèle en place sur le même jeu de test, puis je pousse vers le Space, qui reconstruit l'image. Un `git revert` permet de revenir en arrière.
+Le dossier `.devcontainer` prépare un GitHub Codespace en Python 3.10 : il installe les dépendances de production et lance l'API sur le port 7860, qu'il reste à rendre public. L'URL n'existe que pendant que le Codespace tourne, ce qui convient à une démonstration mais pas à un service permanent.
+
+Pour mettre à jour le modèle, j'incrémente sa version dans `metadata.json`, exposée par `/health`. Je réentraîne, je vérifie les tests, qui contrôlent les seuils de performance, je compare au modèle en place sur le même jeu de test, puis je pousse sur GitHub et je relance l'API dans le Codespace. Un `git revert` permet de revenir en arrière.
 
 ## 4. Résultats et métriques
 
@@ -168,7 +170,7 @@ Tableau : Temps de réponse de l'API en local (aller-retour, médiane de 5 appel
 |---|---|---|---|---|
 | Temps | 3,1 ms | 3,4 ms | 5,1 ms | 17,1 ms |
 
-Ces temps ne comprennent pas la latence réseau d'un hébergement distant, qui reste à mesurer une fois le Space en ligne.
+Ces temps ne comprennent pas la latence réseau d'un hébergement distant, qui reste à mesurer une fois l'API en ligne.
 
 Le test `run_e2e.py` pilote l'extension dans Chromium sur une page qui reproduit la structure des commentaires YouTube, avec 60 commentaires fictifs arrivant par paquets. Les 60 sont lus, 63 avec les réponses, les filtres, la recherche, le thème, la copie et le CSV fonctionnent, et une API coupée produit un message clair. J'ai relu ces 60 prédictions : 57 correspondent au sentiment que j'attendais.
 

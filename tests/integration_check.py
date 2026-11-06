@@ -1,8 +1,8 @@
-"""Test d'intégration contre une API réelle (locale OU déployée sur Hugging Face).
+"""Test d'intégration contre une API réelle (locale OU publique sur GitHub Codespaces).
 
 Usage :
   python tests/integration_check.py http://localhost:8000
-  python tests/integration_check.py https://<user>-youtube-sentiment-api.hf.space
+  python tests/integration_check.py https://<nom-du-codespace>-7860.app.github.dev
 
 Vérifie /health, /predict_batch, la gestion d'erreurs, mesure les temps de réponse
 et contrôle la cohérence avec le modèle local (mêmes prédictions).
@@ -33,7 +33,7 @@ def main(base: str) -> int:
 
     print(f"API : {base}")
     t0 = time.perf_counter()
-    h = requests.get(f"{base}/health", timeout=60)  # 1er appel : le Space peut se réveiller
+    h = requests.get(f"{base}/health", timeout=60)  # 1er appel : délai large pour une API distante
     check("/health", h.ok and h.json().get("model_loaded"), f"({(time.perf_counter() - t0) * 1000:.0f} ms)")
 
     r = requests.post(f"{base}/predict_batch", json={"comments": SAMPLES}, timeout=30)

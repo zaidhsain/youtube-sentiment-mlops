@@ -1,11 +1,11 @@
 // Commentomètre : popup
 // Récupère les commentaires via content.js, les envoie à l'API, affiche le bilan.
 
-// API locale (le port 8000 est déjà pris sur ma machine). À remplacer par
-// l'adresse du Space Hugging Face une fois déployé.
+// API locale (le port 8000 est déjà pris sur ma machine). Pour la démonstration,
+// saisir l'URL publique du Codespace dans les réglages.
 const DEFAULT_API_URL = "http://127.0.0.1:8001";
 const BATCH_SIZE = 100;
-// Un Space HF en veille met parfois ~20 s à se réveiller, d'où ce délai large.
+// Délai large : une API distante peut mettre du temps à répondre au premier appel.
 const REQUEST_TIMEOUT_MS = 30000;
 
 const LABELS = { "1": "😊 positif", "0": "😐 neutre", "-1": "😞 négatif" };

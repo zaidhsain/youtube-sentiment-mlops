@@ -1,0 +1,13 @@
+{
+  "name": "Commentometre API",
+  "image": "mcr.microsoft.com/devcontainers/python:3.10",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [7860],
+  "portsAttributes": {
+    "7860": { "label": "API Commentometre", "onAutoForward": "silent" }
+  },
+  "postCreateCommand": "pip install -r requirements-prod.txt",
+  "postStartCommand": "nohup bash -c 'uvicorn app_api:app --host 0.0.0.0 --port 7860 > logs/uvicorn.log 2>&1' > /dev/null 2>&1 &"
+}

@@ -18,7 +18,7 @@ DOCS = Path(__file__).resolve().parent
 SRC = DOCS / "RAPPORT_TECHNIQUE.md"
 OUT = DOCS / "Rapport_Technique.pdf"
 GITHUB = sys.argv[1] if len(sys.argv) > 1 else "dépôt à publier"
-API = sys.argv[2] if len(sys.argv) > 2 else "déploiement à finaliser"
+API = sys.argv[2] if len(sys.argv) > 2 else "URL Codespaces à ouvrir pour la démonstration"
 
 AUTHOR = "Zaid Hsain"
 SUPERVISOR = "Pr. Maria Zemzami"

@@ -1,20 +1,8 @@
----
-title: Commentometre API
-emoji: 📊
-colorFrom: red
-colorTo: gray
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # Commentomètre
 
 TP3 de Cloud Computing (ENSAM Rabat, filière INDIA, 2026-2027), réalisé par Zaid Hsain.
 
-Une extension Chrome qui lit les commentaires d'une vidéo YouTube et dit s'ils sont plutôt positifs, neutres ou négatifs. Le classement est fait par un modèle scikit-learn (TF-IDF + régression logistique) servi par une petite API FastAPI. Le Dockerfile est prêt pour Hugging Face Spaces ; l'API tourne pour l'instant en local.
-
-*(Le bloc YAML en haut de ce fichier n'est pas une erreur : c'est la configuration du Space Hugging Face.)*
+Une extension Chrome qui lit les commentaires d'une vidéo YouTube et dit s'ils sont plutôt positifs, neutres ou négatifs. Le classement est fait par un modèle scikit-learn (TF-IDF + régression logistique) servi par une petite API FastAPI. L'API est conteneurisée avec Docker et prévue pour être exposée depuis GitHub Codespaces sur le port 7860.
 
 <p align="center"><img src="docs/screenshots/11_rick_astley_clair.png" width="300" alt="Popup de l'extension"> &nbsp; <img src="docs/screenshots/12_rick_astley_sombre.png" width="300" alt="Popup en thème sombre"></p>
 
@@ -58,6 +46,8 @@ Le détail est dans `reports/metrics.json` et `reports/model_comparison.csv`, et
 
 ## L'API
 
+La documentation complète est dans [docs/API.md](docs/API.md).
+
 | Route | Rôle |
 |---|---|
 | `GET /health` | état du service, modèle chargé ou non, version |
@@ -75,19 +65,26 @@ Chaque prédiction contient `sentiment` (−1, 0 ou 1), `label`, `confidence` et
 
 1. Ouvrir `chrome://extensions` et activer le **mode développeur**.
 2. Cliquer sur **Charger l'extension non empaquetée**, puis choisir le dossier `chrome-extension/`.
-3. Dans le popup, ouvrir **Réglages**, saisir l'adresse de l'API (locale ou Hugging Face), puis cliquer sur **Tester la connexion**.
+3. Dans le popup, ouvrir **Réglages**, saisir l'adresse de l'API (locale ou Codespaces), puis cliquer sur **Tester l'API**. Le guide complet est dans [docs/GUIDE_UTILISATEUR.md](docs/GUIDE_UTILISATEUR.md).
 
-## Déploiement sur Hugging Face
+## Déploiement sur GitHub Codespaces
 
-Le Space est de type Docker. Je pousse le même dépôt vers deux remotes :
+Le dossier `.devcontainer` prépare le Codespace : Python 3.10, dépendances de production, API lancée sur le port 7860.
+
+1. Sur GitHub, ouvrir le dépôt, puis **Code → Codespaces → Create codespace on main**.
+2. Dans le Codespace, ouvrir l'onglet **Ports**, faire un clic droit sur le port **7860**, puis **Port Visibility → Public**. En ligne de commande : `gh codespace ports visibility 7860:public -c <nom>`.
+3. Copier l'URL du port, de la forme `https://<nom-du-codespace>-7860.app.github.dev`.
+4. La vérifier depuis sa machine :
 
 ```bash
-git remote add hf https://huggingface.co/spaces/<utilisateur>/commentometre-api
-git push hf main
-python tests/integration_check.py https://<utilisateur>-commentometre-api.hf.space
+python tests/integration_check.py https://<nom-du-codespace>-7860.app.github.dev
 ```
 
-Le dernier script vérifie l'API en ligne et contrôle qu'elle donne les mêmes prédictions que le modèle local.
+5. Coller cette URL dans l'extension (**Réglages**, puis **Tester l'API**).
+
+L'URL ne fonctionne que pendant que le Codespace tourne : il faut le démarrer avant la démonstration. Si l'API n'a pas démarré, la lancer à la main : `uvicorn app_api:app --host 0.0.0.0 --port 7860`.
+
+Le Dockerfile permet aussi de lancer l'API en conteneur : `docker build -t commentometre . && docker run -p 7860:7860 commentometre`.
 
 ## Tests
 
@@ -96,4 +93,4 @@ Le dernier script vérifie l'API en ligne et contrôle qu'elle donne les mêmes 
 - `tests/e2e/run_e2e.py` : pilote l'extension dans Chromium avec Playwright, sur une page qui reproduit la structure HTML des commentaires YouTube, pour que le test reste reproductible.
 - `tests/e2e/record_demo.py` : enregistre la vidéo de démonstration sur de vraies vidéos YouTube.
 
-Le rapport complet est dans [docs/Rapport_Technique.pdf](docs/Rapport_Technique.pdf), et la vidéo de démonstration dans [docs/demo/Demo_Commentometre.mp4](docs/demo/Demo_Commentometre.mp4).
+Le rapport complet est dans [docs/Rapport_Technique.pdf](docs/Rapport_Technique.pdf), et la vidéo de démonstration dans [docs/demo/Video_Demo_1min.mp4](docs/demo/Video_Demo_1min.mp4).

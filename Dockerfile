@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PORT=7860
 
-# Hugging Face exécute le conteneur avec l'UID 1000 : on crée cet utilisateur (non-root).
+# Le conteneur tourne avec un utilisateur non-root d'UID 1000.
 RUN useradd -m -u 1000 user
 WORKDIR /app
 

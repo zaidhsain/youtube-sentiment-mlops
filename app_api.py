@@ -1,7 +1,7 @@
-"""Point d'entrée de production (Docker / Hugging Face Spaces).
+"""Point d'entrée de production (Docker / GitHub Codespaces).
 
 Réutilise l'application modulaire de src/api et la lance sur le port attendu
-par Hugging Face (7860), configurable via la variable d'environnement PORT.
+pour la démonstration (7860), configurable via la variable d'environnement PORT.
 """
 import os
 
