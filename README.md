@@ -88,6 +88,7 @@ Le Dockerfile permet aussi de lancer l'API en conteneur : `docker build -t comme
 
 ## Tests
 
+- GitHub Actions (`.github/workflows/ci.yml`) : à chaque envoi, relance les tests, construit l'image Docker, lance le conteneur et vérifie l'API.
 - `pytest -q` : nettoyage du texte, modèle (seuils, cas limites, latence) et API (codes d'erreur, CORS, tailles de lot).
 - `tests/integration_check.py <url>` : vérifie une API réelle, locale ou en ligne.
 - `tests/e2e/run_e2e.py` : pilote l'extension dans Chromium avec Playwright, sur une page qui reproduit la structure HTML des commentaires YouTube, pour que le test reste reproductible.

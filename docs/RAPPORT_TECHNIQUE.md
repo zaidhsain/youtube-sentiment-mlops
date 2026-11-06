@@ -24,14 +24,14 @@ Tableau : État des livrables demandés
 
 | Livrable | État |
 |---|---|
-| Code source, Dockerfile | Terminé, dépôt GitHub créé |
+| Code source, Dockerfile | Terminé, dépôt GitHub créé, image construite par GitHub Actions |
 | Modèle et rapport de performance | Terminé (`models/`, `reports/`) |
 | API | Fonctionne en local ; configuration Codespaces prête, URL publique à ouvrir pour la démonstration |
 | Extension Chrome | Terminée, essayée sur de vraies vidéos YouTube ; guide utilisateur fourni |
 | README et rapport | Terminés |
 | Vidéo de démonstration | Terminée (5 min 02, sans voix) |
 
-Deux points restent donc ouverts : l'API n'est pas encore en ligne, et l'image Docker n'a pas été construite, Docker n'étant pas installé sur ma machine. J'ai vérifié à la place que l'API démarre dans un environnement réduit aux seuls fichiers et dépendances de l'image (section 5).
+Un point reste ouvert : l'URL publique de l'API n'a pas encore été ouverte et testée. Docker n'étant pas installé sur ma machine, l'image est construite et vérifiée par GitHub Actions (section 3.6).
 
 ## 2. Architecture détaillée
 
@@ -128,7 +128,7 @@ Pour rester fluide avec beaucoup de commentaires, l'extension les envoie par lot
 
 ### 3.6 Docker et déploiement
 
-L'image part de `python:3.10-slim`, tourne avec un utilisateur non root d'identifiant 1000 et expose le port 7860. Les dépendances sont installées avant la copie du code : modifier une ligne de Python ne relance donc pas leur installation. Seuls `src/utils`, `src/api`, `models/` et `app_api.py` sont copiés.
+L'image part de `python:3.10-slim`, tourne avec un utilisateur non root d'identifiant 1000 et expose le port 7860. Les dépendances sont installées avant la copie du code : modifier une ligne de Python ne relance donc pas leur installation. Seuls `src/utils`, `src/api`, `models/` et `app_api.py` sont copiés. À chaque envoi sur GitHub, GitHub Actions construit l'image (564 Mo), lance le conteneur, interroge `/health` et vérifie trois prédictions.
 
 `requirements-prod.txt` ne garde que ce qui sert le modèle, avec des versions exactes. pandas, matplotlib ou pytest n'ont rien à faire en production : les retirer allège l'image et réduit le nombre de paquets à surveiller. Pour aller plus loin, on pourrait exporter le modèle en ONNX et se passer de scikit-learn.
 
@@ -162,7 +162,7 @@ Les étiquettes viennent donc de TextBlob et non d'annotateurs humains. Cela cha
 
 ### 4.3 API et tests
 
-Les 38 tests pytest passent. Ils couvrent le nettoyage, le modèle (seuils de l'énoncé, cas limites, latence) et l'API (tailles de lot, requêtes invalides, CORS, modèle absent). Le script `integration_check.py` vérifie une API réelle : en local, tous ses contrôles passent, dont la cohérence entre l'API et le modèle chargé directement.
+Les 38 tests pytest passent sur ma machine, et GitHub Actions les relance à chaque envoi, sauf le contrôle des seuils sur le jeu de test, qui demande les données. Ils couvrent le nettoyage, le modèle (seuils de l'énoncé, cas limites, latence) et l'API (tailles de lot, requêtes invalides, CORS, modèle absent). Le script `integration_check.py` vérifie une API réelle : en local, tous ses contrôles passent, dont la cohérence entre l'API et le modèle chargé directement.
 
 Tableau : Temps de réponse de l'API en local (aller-retour, médiane de 5 appels)
 
@@ -201,7 +201,7 @@ Tableau : Principales difficultés
 | numpy 2.4 indisponible pour Python 3.10, version de l'image | J'avais commencé en Python 3.11 | Environnement recréé en 3.10, modèle réentraîné (mêmes résultats sur le test), versions figées |
 | « Aucun commentaire trouvé » sur des vidéos qui en ont | L'extension abandonnait après 3,6 s, même si YouTube n'avait encore rien renvoyé | Attente du premier commentaire, jusqu'à 12 s |
 | Score élevé, mais erreurs absurdes | Étiquettes produites par TextBlob | Vérification sur tout le jeu de données, limite documentée |
-| Pas de Docker sur ma machine | Image impossible à construire | Environnement vierge contenant seulement les fichiers de l'image, API lancée sur le port 7860 |
+| Pas de Docker sur ma machine | Image impossible à construire en local | Essai dans un environnement vierge, puis construction et test de l'image par GitHub Actions |
 | Le port 8000 était déjà occupé | Un autre service local | API de développement sur le port 8001 |
 
 La première difficulté a été la plus instructive : tout marchait sur ma machine, et seul un essai dans un environnement dépouillé pouvait révéler le problème.
@@ -212,11 +212,11 @@ La priorité concerne les données. Tant que les étiquettes viennent de TextBlo
 
 Côté modèle, on pourrait traiter les négations, puis essayer un petit transformer multilingue comme XLM-R, exporté en ONNX pour rester rapide. Il faudrait aussi vérifier la calibration des probabilités : avec C = 20, le modèle affiche souvent une confiance très élevée.
 
-Côté MLOps, il reste à terminer le déploiement, à ajouter une intégration continue (tests et construction de l'image), un suivi des expériences avec MLflow et une surveillance de la dérive des données. Une clé d'API limiterait les abus. Enfin, l'API officielle YouTube Data v3 permettrait de récupérer tous les commentaires sans faire défiler la page.
+Côté MLOps, il reste à ouvrir l'URL publique, puis à passer à un hébergement permanent, avec un suivi des expériences par MLflow et une surveillance de la dérive des données. Une clé d'API limiterait les abus. Enfin, l'API officielle YouTube Data v3 permettrait de récupérer tous les commentaires sans faire défiler la page.
 
 ## Conclusion
 
-Le système fonctionne en local de bout en bout : un clic suffit pour lire les commentaires d'une vidéo et obtenir un bilan en quelques secondes, et le modèle dépasse les trois seuils de l'énoncé. Il reste à construire l'image et à mettre l'API en ligne. Je retiens surtout deux leçons : un bon score ne vaut que ce que valent les étiquettes, et un code qui marche sur ma machine n'est pas encore prouvé tant qu'il n'a pas tourné dans un environnement proche de la production.
+Le système fonctionne en local de bout en bout : un clic suffit pour lire les commentaires d'une vidéo et obtenir un bilan en quelques secondes, et le modèle dépasse les trois seuils de l'énoncé. L'image Docker est construite et vérifiée, et il reste à ouvrir l'URL publique de l'API. Je retiens surtout deux leçons : un bon score ne vaut que ce que valent les étiquettes, et un code qui marche sur ma machine n'est pas encore prouvé tant qu'il n'a pas tourné dans un environnement proche de la production.
 
 ## Annexe : questions de réflexion
 
