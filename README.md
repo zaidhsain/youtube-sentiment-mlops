@@ -82,7 +82,7 @@ python tests/integration_check.py https://<nom-du-codespace>-7860.app.github.dev
 
 5. Coller cette URL dans l'extension (**Réglages**, puis **Tester l'API**).
 
-L'URL ne fonctionne que pendant que le Codespace tourne : il faut le démarrer avant la démonstration. Si l'API n'a pas démarré, la lancer à la main : `uvicorn app_api:app --host 0.0.0.0 --port 7860`.
+L'URL ne fonctionne que pendant que le Codespace tourne : il faut le démarrer avant la démonstration. Si l'API n'a pas démarré, la lancer à la main : `bash .devcontainer/start_api.sh`.
 
 Le Dockerfile permet aussi de lancer l'API en conteneur : `docker build -t commentometre . && docker run -p 7860:7860 commentometre`.
 

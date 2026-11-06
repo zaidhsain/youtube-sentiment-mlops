@@ -14,5 +14,5 @@
     }
   },
   "postCreateCommand": "pip install -r requirements-prod.txt",
-  "postStartCommand": "mkdir -p logs && setsid nohup uvicorn app_api:app --host 0.0.0.0 --port 7860 > logs/uvicorn.log 2>&1 < /dev/null &"
+  "postStartCommand": "bash .devcontainer/start_api.sh"
 }
