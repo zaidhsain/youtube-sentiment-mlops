@@ -1,13 +1,13 @@
 # Documentation de l'API
 
-Adresse locale : `http://127.0.0.1:8001`. Adresse publique pendant la démonstration : `https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev`. La documentation interactive est sur `/docs`.
+Adresse locale : `http://127.0.0.1:8001`. Adresse publique pendant la démonstration : `https://commentometre-api-q746jjrv766gc4j64-7860.app.github.dev`. La documentation interactive est sur `/docs`.
 
 ## GET /health
 
 Indique si le service tourne et si le modèle est chargé.
 
 ```bash
-curl https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev/health
+curl https://commentometre-api-q746jjrv766gc4j64-7860.app.github.dev/health
 ```
 
 ```json
@@ -21,7 +21,7 @@ curl https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev/health
 Analyse de 1 à 500 commentaires. Chaque commentaire est tronqué à 5 000 caractères.
 
 ```bash
-curl -X POST https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev/predict_batch \
+curl -X POST https://commentometre-api-q746jjrv766gc4j64-7860.app.github.dev/predict_batch \
   -H "Content-Type: application/json" \
   -d '{"comments": ["I love this video!", "worst tutorial ever", "posted at 10am"]}'
 ```

@@ -2,7 +2,7 @@
 
 TP3 de Cloud Computing (ENSAM Rabat, filière INDIA, 2026-2027), réalisé par Zaid Hsain.
 
-Une extension Chrome qui lit les commentaires d'une vidéo YouTube et dit s'ils sont plutôt positifs, neutres ou négatifs. Le classement est fait par un modèle scikit-learn (TF-IDF + régression logistique) servi par une petite API FastAPI. L'API est conteneurisée avec Docker et exposée depuis GitHub Codespaces : `https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev` (quand le Codespace tourne).
+Une extension Chrome qui lit les commentaires d'une vidéo YouTube et dit s'ils sont plutôt positifs, neutres ou négatifs. Le classement est fait par un modèle scikit-learn (TF-IDF + régression logistique) servi par une petite API FastAPI. L'API est conteneurisée avec Docker et exposée depuis GitHub Codespaces : `https://commentometre-api-q746jjrv766gc4j64-7860.app.github.dev` (quand le Codespace tourne).
 
 <p align="center"><img src="docs/screenshots/11_resultat_clair.png" width="300" alt="Popup de l'extension"> &nbsp; <img src="docs/screenshots/12_resultat_sombre.png" width="300" alt="Popup en thème sombre"></p>
 

@@ -1,8 +1,8 @@
 #!/bin/zsh
 # À lancer avant la démonstration : démarre le Codespace et rend le port 7860 public.
 # Le port repasse en privé à chaque redémarrage du Codespace.
-CS="commentometre-api-97v7777w4q9cp6qp"
-URL="https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev"
+CS="commentometre-api-q746jjrv766gc4j64"
+URL="https://commentometre-api-q746jjrv766gc4j64-7860.app.github.dev"
 # Le Codespace appartient au compte zaidhsain, quel que soit le compte gh actif.
 export GH_TOKEN="$(gh auth token -h github.com -u zaidhsain)"
 echo "Démarrage du Codespace…"

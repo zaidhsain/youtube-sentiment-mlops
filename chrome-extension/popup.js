@@ -2,7 +2,7 @@
 // Récupère les commentaires via content.js, les envoie à l'API, affiche le bilan.
 
 // URL publique de l'API (GitHub Codespaces, port 7860). Elle se change dans les réglages.
-const DEFAULT_API_URL = "https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev";
+const DEFAULT_API_URL = "https://commentometre-api-q746jjrv766gc4j64-7860.app.github.dev";
 const BATCH_SIZE = 100;
 // Délai large : une API distante peut mettre du temps à répondre au premier appel.
 const REQUEST_TIMEOUT_MS = 30000;
