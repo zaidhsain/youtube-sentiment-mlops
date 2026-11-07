@@ -3,6 +3,8 @@
 # Le port repasse en privé à chaque redémarrage du Codespace.
 CS="commentometre-api-97v7777w4q9cp6qp"
 URL="https://commentometre-api-97v7777w4q9cp6qp-7860.app.github.dev"
+# Le Codespace appartient au compte zaidhsain, quel que soit le compte gh actif.
+export GH_TOKEN="$(gh auth token -h github.com -u zaidhsain)"
 echo "Démarrage du Codespace…"
 gh codespace ssh -c "$CS" -- 'sleep 10; curl -s -m 5 127.0.0.1:7860/health > /dev/null || bash /workspaces/youtube-sentiment-mlops/.devcontainer/start_api.sh'
 gh codespace ports visibility 7860:public -c "$CS"
