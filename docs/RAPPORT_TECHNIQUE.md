@@ -29,7 +29,7 @@ Tableau : État des livrables demandés
 | API | En ligne sur GitHub Codespaces, port 7860 public |
 | Extension Chrome | Terminée, essayée sur de vraies vidéos YouTube ; guide utilisateur fourni |
 | README et rapport | Terminés |
-| Vidéo de démonstration | Terminée (3 min, sans voix) |
+| Vidéo de démonstration | Terminée (1 min 12, sans voix) |
 
 L'API répond à l'adresse `https://commentometre-api-q746jjrv766gc4j64-7860.app.github.dev` tant que le Codespace tourne. Docker n'étant pas installé sur ma machine, l'image est construite et vérifiée par GitHub Actions (section 3.6).
 
